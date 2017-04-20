@@ -6,6 +6,11 @@ extern "C" {
 
 State  state;
 int chessNum(0);
+//ChessType humanColor(black);
+//ChessType computerColor(white);
+ChessType humanColor(white);
+ChessType computerColor(black);
+bool humanInput(true);
 
 void sgSetup() {
 	initial();
@@ -13,25 +18,29 @@ void sgSetup() {
 	initMouse(SG_COORDINATE);
 }
 void sgLoop() {
-	static bool inputFlag(true);
+	static bool inputFlag(humanColor == black ? true : false);
+
 	static Position nextPosition;
 	static int first = 1;
 	putCheck();
-	printState(inputFlag ? black : white);
+	printState((!inputFlag && humanColor == black)
+		|| (inputFlag && humanColor == white) ? white : black);
 	setColor(0, 0, 0);
-	putString(!inputFlag ?
+	putString((!inputFlag && humanColor == black)
+		|| (inputFlag && humanColor == white) ?
 		"White's turn£º" :
 		"Black's turn£º",
 		16, 16);
+	// three condition -- finish game
 	if (chessNum == 64 || (!canInput(state, black) && !canInput(state, white))) {
 		int resultFlag = isWin(state, black);
-		setColor(255, 255, 0);
+		setColor(0, 255, 0);
 		putQuad(0, 0, 239, 59, SOLID_FILL);
 		setColor(0, 0, 0);
 		if (resultFlag > 1) {
 			putString("Black Win!", 16, 16);
 		}
-		else if(resultFlag < 1){
+		else if (resultFlag < 1) {
 			putString("White Win!", 16, 16);
 		}
 		else {
@@ -39,22 +48,17 @@ void sgLoop() {
 		}
 		return;
 	}
+
 	if (first) {
 		first = 0;
 		return;
 	}
+
 	vecThree tmpMouse;
 	if (inputFlag) {
 		setColor(0, 0, 0);
-		if (canInput(state, black)) {
-			if (biosMouse(1).m) {
-				tmpMouse = biosMouse(0);
-				if (tmpMouse.y < 60)return;
-			}
-			else return;
-			nextPosition.x = tmpMouse.x / 60;
-			nextPosition.y = tmpMouse.y / 60 - 1;
-			while (!canExecute(state, nextPosition, black)) {
+		if (canInput(state, humanColor)) {
+			if (humanInput) {
 				if (biosMouse(1).m) {
 					tmpMouse = biosMouse(0);
 					if (tmpMouse.y < 60)return;
@@ -62,33 +66,44 @@ void sgLoop() {
 				else return;
 				nextPosition.x = tmpMouse.x / 60;
 				nextPosition.y = tmpMouse.y / 60 - 1;
+				while (!canExecute(state, nextPosition, humanColor)) {
+					if (biosMouse(1).m) {
+						tmpMouse = biosMouse(0);
+						if (tmpMouse.y < 60)return;
+					}
+					else return;
+					nextPosition.x = tmpMouse.x / 60;
+					nextPosition.y = tmpMouse.y / 60 - 1;
+				}
+				execute(state, nextPosition, humanColor);
 			}
-			execute(state, nextPosition, black);
-			/*
-			Position nextPosition = getNextPosition2(state, black);
-			execute(state, nextPosition, black);
-			*/
+			else {
+				Position nextPosition = getNextPosition2(state, humanColor);
+				execute(state, nextPosition, humanColor);
+			}
 		}
 	}
 	else {
-		if (canInput(state, white)) {
-			Position nextPosition = getNextPosition2(state, white);
-			execute(state, nextPosition, white);
+		if (canInput(state, computerColor)) {
+			Position nextPosition = getNextPosition2(state, computerColor);
+			execute(state, nextPosition, computerColor);
 		}
 	}
 	inputFlag = !inputFlag;
 	putCheck();
-	printState(inputFlag ? black : white);
+	printState((!inputFlag && humanColor == black)
+		|| (inputFlag && humanColor == white) ? white : black);
 	setColor(0, 0, 0);
-	putString(!inputFlag ?
+	putString((!inputFlag && humanColor == black)
+		|| (inputFlag && humanColor == white) ?
 		"White's turn£º" :
 		"Black's turn£º",
 		16, 16);
 }
 void putCheck() {
-	setColor(255, 255, 0);
+	setColor(0, 255 / 2, 0);
 	clearScreen();
-	setColor(127, 127, 0);
+	setColor(0, 0, 0);
 	for (int i = 0; i < 8; i++) {
 		putLine(0, 60 * i + 60, 479, 60 * i + 60, 0);
 		putLine(60 * i, 60, 60 * i, 539, 0);
@@ -97,7 +112,7 @@ void putCheck() {
 
 void printState(ChessType type) {
 	int whiteNum(0), blackNum(0);
-	setColor(255, 255, 0);
+	setColor(0, 255 / 3, 0);
 	putQuad(0, 0, 479, 59, SOLID_FILL);
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
@@ -118,7 +133,7 @@ void printState(ChessType type) {
 		}
 	}
 	setColor(255, 127, 127);
-	vector<Position> selections = getSelection(state,type);
+	vector<Position> selections = getSelection(state, type);
 	for (auto &it : selections) {
 		putCircle(it.x * 60 + 30, it.y * 60 + 90, 10, EMPTY_FILL);
 		putCircle(it.x * 60 + 30, it.y * 60 + 90, 9, EMPTY_FILL);
@@ -146,10 +161,10 @@ int isWin(State& s, ChessType type) {
 			if (s[i][j] == noChess)
 				continue;
 			++result[s[i][j]];
-			
+
 		}
 	}
-	if (result[type] > result[!type]){
+	if (result[type] > result[!type]) {
 		return 2;
 	}
 	else if (result[type] == result[!type]) {

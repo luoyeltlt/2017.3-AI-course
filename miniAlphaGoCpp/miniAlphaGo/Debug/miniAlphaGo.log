@@ -1,8 +1,4 @@
-﻿  mstc.cpp
-g:\lab\ai\minialphago\minialphago\mstc.cpp(103): warning C4018: “<”: 有符号/无符号不匹配
-  main.cpp
-  正在生成代码...
-g:\lab\ai\minialphago\minialphago\mstc.cpp(155): warning C4715: “expand”: 不是所有的控件路径都返回值
-winsgld.lib(winsgl.obj) : warning LNK4099: 未找到 PDB“SGL.pdb”(使用“winsgld.lib(winsgl.obj)”或在“G:\lab\ai\miniAlphaGo\Debug\SGL.pdb”中寻找)；正在链接对象，如同没有调试信息一样
-  miniAlphaGo.vcxproj -> G:\lab\ai\miniAlphaGo\Debug\miniAlphaGo.exe
-  miniAlphaGo.vcxproj -> G:\lab\ai\miniAlphaGo\Debug\miniAlphaGo.pdb (Full PDB)
+﻿  main.cpp
+c:\users\luzai\pycharmprojects\minialphago\minialphagocpp\minialphago\main.cpp(57): warning C4101: 'tmpMouse': unreferenced local variable
+  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.exe
+  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.pdb (Full PDB)

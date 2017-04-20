@@ -81,7 +81,7 @@ Position getNextPosition2(State& s ,ChessType type) {
 	while (true) {
 		Vertex* vl = treePolicy(v0);
 		end = clock();
-		if (end - start > 20000 || isEnd) {
+		if (end - start > 2000 || isEnd) {
 			break;
 		}
 		int deta = defaultPolicy(vl->s, vl->lastType);
