@@ -1,5 +1,6 @@
 #include "game.h"
 #include <ctime>
+#include <iostream>
 
 vector<Position> getSelection(State& s, ChessType type) {
 	vector<Position> result;
@@ -81,7 +82,7 @@ Position getNextPosition2(State& s ,ChessType type) {
 	while (true) {
 		Vertex* vl = treePolicy(v0);
 		end = clock();
-		if (end - start > 2000 || isEnd) {
+		if (end - start > 300000 || isEnd) {
 			break;
 		}
 		int deta = defaultPolicy(vl->s, vl->lastType);
@@ -90,10 +91,12 @@ Position getNextPosition2(State& s ,ChessType type) {
 	}
 	result = bestChild(v0, 0)->lastPosition;
 	freeTree(v0);
+	std::cout << "Consume time: "<< (clock() - start) / 1000.0 << endl; //TODO cmd line win : time + confidence 
 	return result;
 }
 
 bool canExpand(Vertex* v) {
+	// TODO 
 	if (v->child == nullptr) {
 		return true;
 	}
@@ -132,7 +135,7 @@ Vertex* treePolicy(Vertex * v) {
 		}
 		v = bestChild(v, 1);
 	}
-	isEnd = true;
+	isEnd = true; // TODO when choice is small, still need to exploit?
 	return v;
 }
 
@@ -188,13 +191,15 @@ int defaultPolicy(State s, ChessType type) {
 		tempType = 1 - tempType;
 	}
 	return isWin(s, type);
+	// win 2 lose 1 TODO calculate chess number and normaliza to 0-1 0.5 means balance?
+	// TODO should judge for 1-type whether win?
 }
 
 void backUp(Vertex* v, int deta) {
 	while (v != nullptr) {
 		++(v->visitedNum);
 		v->q += deta;
-		deta = -deta;
+		deta = -deta;//TODO 1-deta
 		v = v->parent;
 	}
 }

@@ -22,7 +22,7 @@ void sgLoop() {
 
 	static Position nextPosition;
 	static int first = 1;
-	putCheck();
+	putCheck(); //TODO how to debug with gui
 	printState((!inputFlag && humanColor == black)
 		|| (inputFlag && humanColor == white) ? white : black);
 	setColor(0, 0, 0);
