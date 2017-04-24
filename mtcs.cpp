@@ -11,9 +11,9 @@ using namespace std;
 //using ChessType = enum { white, black, noChess };
 enum ChessType {white, black, noChess};
 #define nullptr 0
-void myprint()
+const char* myprint()
 {
-    printf("hello world\n");
+   printf("hello world\n");
    int myints[] = {16,2,77,29};
    vector<int> first;
    vector<int> second (4,100);
@@ -22,8 +22,8 @@ void myprint()
     for ( vector<int>::iterator it = fifth.begin(); it != fifth.end(); ++it)
     printf("%d ",*it);
     printf("\n");
-//    printf("%f",My_variable);
-    return;
+
+    return "hello";
 }
 
 struct Row {
@@ -53,15 +53,18 @@ struct Position {
 	Position(int xx = 0, int yy = 0) : x(xx), y(yy) {}
 	int x, y;
 };
+
 void initial();
-//Position getNextPosition(State& s, ChessType type);
 void execute(State& s, Position nextPosition, ChessType type);
 int isWin(State& s, ChessType type);
 bool canInput(State& s, ChessType type);
-
+vector<Position> getSelection(State& s, ChessType type);
+Position getNextPosition2(State& s, ChessType type);
 void printState(ChessType type);
 bool canExecute(State& s, Position nextPosition, ChessType type);
-
+void putCheck();
+bool isFinal(State& s);
+bool isEnd(false);
 
 void execute(State& s, Position nextPosition, ChessType type) {
 	int x(nextPosition.x), y(nextPosition.y);
@@ -245,7 +248,6 @@ void execute(State& s, Position nextPosition, ChessType type) {
 	}
 }
 
-
 int isWin(State& s, ChessType type) {
 	int result[2] = { 0, 0 };
 	for (int i(0); i != 8; ++i) {
@@ -264,7 +266,6 @@ int isWin(State& s, ChessType type) {
 	}
 	return 0;
 }
-
 
 bool canExecute(State& s, Position nextPosition, ChessType type) {
 	int x(nextPosition.x), y(nextPosition.y);
@@ -435,9 +436,6 @@ bool canInput(State& s, ChessType type) {
 	return false;
 }
 
-void putCheck();
-vector<Position> getSelection(State& s, ChessType type);
-Position getNextPosition2(State& s, ChessType type);
 vector<Position> getSelection(State& s, ChessType type) {
 	vector<Position> result;
 	Position nextPosition;
@@ -452,10 +450,6 @@ vector<Position> getSelection(State& s, ChessType type) {
 	}
 	return result;
 }
-
-bool isFinal(State& s);
-
-bool isEnd(false);
 
 struct Vertex {
 	Vertex(State ss, Position last, ChessType type, Vertex* father) : parent(father),
@@ -530,16 +524,20 @@ Position getNextPosition2(State& s ,ChessType type) {
 //	std::cout << "Consume time: "<< (clock() - start) / 1000.0 << endl; //TODO cmd line win : time + confidence
 	return result;
 }
-void getNextPosition3(int* arr,int type){
-ChessType chess_type =static_cast<ChessType>(type);
-State state;
-for (int i =0;i<8;i++){
-    for (int j=0;j<8;j++){
-        state.board[i][j]=arr[8*i+j];
+int* getNextPosition3(int* arr,int type){
+    ChessType chess_type =static_cast<ChessType>(type);
+    State state;
+    for (int i =0;i<8;i++){
+        for (int j=0;j<8;j++){
+            state.board[i][j]=arr[8*i+j];
+        }
     }
-}
-Position pos=getNextPosition2(state,chess_type);
-printf("%d %d ",pos.x,pos.y);
+    Position pos=getNextPosition2(state,chess_type);
+//    printf("%d %d ",pos.x,pos.y);
+    int* pos_arr=new int[2];
+    pos_arr[0]=pos.x;
+    pos_arr[1]=pos.y;
+    return pos_arr;
 }
 bool canExpand(Vertex* v) {
 	// TODO

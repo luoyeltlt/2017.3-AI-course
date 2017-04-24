@@ -1,7 +1,7 @@
 rm *.o  *.so -f
 
-#gcc  -shared  -Wl,-soname,ex2  -o ex2.so -fPIC ex2.cpp -lstdc++
-gcc  -shared  -Wl,-soname,ex2  -o mtcs.so -fPIC mtcs.cpp -lstdc++
+#gcc  -shared  -Wl,-soname,ex2  -o ex2.so -fPIC ex2.cpp -lstdc++ -lpython2.7
+gcc  -shared  -Wl,-soname,ex2  -o mtcs.so -fPIC mtcs.cpp -lstdc++ -lpython2.7
 
 #swig -tcl example.i
 #swig -python example.i
