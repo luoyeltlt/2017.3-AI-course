@@ -21,6 +21,17 @@ class GUI(object):
         self.screen = screen
         self.init(board)
 
+    def handle_finish(self, board):
+        if board.must_pass(0) == True and board.must_pass(1) == True:
+            print "Game Finish"
+            if board.white_score > board.black_score:
+                over_text = "You Win"
+            elif board.white_score < board.black_score:
+                over_text = "Computer Win"
+            else:
+                over_text = "Balance"
+            self.screen.create_text(250, 550, anchor="c", font=("Consolas", 15), text=over_text)
+
     def init(self, board):
         # Drawing the intermediate lines
         for i in range(7):
@@ -156,16 +167,6 @@ class GUI(object):
         self.screen.create_text(400, 550, anchor="w", tags="score", font=("Consolas", 50), fill="black",
                                 text=board.black_score)
 
-    def draw_board_move(self, board, x, y):
-
-        # Move and update screen
-        board.oldarray = board.array
-        board.oldarray[x][y] = "w"
-        board.array = board.move(board.array, x, y)
-
-        # Switch Player
-        board.player = 1 - board.player
-        self.update(board)
 
 
 class Board(object):
@@ -192,6 +193,7 @@ class Board(object):
 
         # Initializing old values
         self.oldarray = deepcopy(self.array)
+
     def update_score(self):
         white_score = 0
         black_score = 0
@@ -201,9 +203,10 @@ class Board(object):
                     white_score += 1
                 elif self.array[x][y] == "b":
                     black_score += 1
-        self.black_score=black_score
-        self.white_score=white_score
-        self.ttl_score=self.black_score+self.white_score
+        self.black_score = black_score
+        self.white_score = white_score
+        self.ttl_score = self.black_score + self.white_score
+
     @staticmethod
     def valid(array, player, x, y):
         # Sets player colour
@@ -262,7 +265,7 @@ class Board(object):
 
     def get_action(self, player=None):
         if player is None:
-            player=self.player
+            player = self.player
         # if self._next_action is None:
         action = []
         for x in range(8):
@@ -274,7 +277,7 @@ class Board(object):
         return action
         # else:
         #     return self._next_action
-            # Updating the board to the screen
+        # Updating the board to the screen
 
     def must_pass(self, player):
         must_pass = True
@@ -283,6 +286,13 @@ class Board(object):
                 if self.valid(self.array, player, x, y):
                     must_pass = False
         return must_pass
+    def self_move(self,x,y):
+        self.oldarray = deepcopy(self.array)
+        self.oldarray[x][y] = "w"
+        self.array = self.move(self.array, x, y)
+
+        # Switch Player
+        self.player = 1 - self.player
 
     def move(self, passedArray, x, y):
         # Must copy the passedArray so we don't alter the original
@@ -290,7 +300,6 @@ class Board(object):
         # Set colour and set the moved location to be that colour
         if self.player == 0:
             colour = "w"
-
         else:
             colour = "b"
         array[x][y] = colour
@@ -363,7 +372,7 @@ class TreeNode(object):
         # if not self._next_action:
         action = self.board.get_action()
         # self._next_action = action
-        return action #self._next_action
+        return action  # self._next_action
 
     def move_2_next_state(self, action):
         next_node = TreeNode(board=self.board)
@@ -372,6 +381,7 @@ class TreeNode(object):
         next_node.last_action = action
         next_node.parent = self
         return next_node
+
 
 # class Tree(object):
 #     def __init__(self, *args, **kwargs):
@@ -411,7 +421,12 @@ class MTCSAgent(object):
             elif len(tree_node.child) != 0:
                 tree_node = self.best_child(tree_node)
             else:
-                print "some exception..."
+                # no chess to put
+                next_node = deepcopy(tree_node)
+                next_node.parent = tree_node
+                next_node.board.player = 1 - tree_node.board.player
+                return next_node, False
+
         return tree_node, True  # All Node is explored
 
     def default_policy(self, tree_node_in):
@@ -421,13 +436,13 @@ class MTCSAgent(object):
             if not actions:
                 tree_node.board.player = 1 - tree_node.board.player
             else:
-                action = actions[np.random.randint(0,len(actions))]
-                tree_node = tree_node.move_2_next_state( action)
+                action = actions[np.random.randint(0, len(actions))]
+                tree_node = tree_node.move_2_next_state(action)
         tree_node.board.update_score()
         if tree_node_in.board.player == 0:  # 0 is white and 1 is black
-            prob_4_curr_player = tree_node.board.white_score*1. / tree_node.board.ttl_score
+            prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
         else:
-            prob_4_curr_player = tree_node.board.black_score*1. / tree_node.board.ttl_score
+            prob_4_curr_player = tree_node.board.black_score * 1. / tree_node.board.ttl_score
         return prob_4_curr_player
 
     def back_up(self, tree_node, prob):
@@ -441,6 +456,7 @@ class MTCSAgent(object):
         best_child = tree_node.child[0]  # assert there is at least a child
         best_val = -1
         for child in tree_node.child:
+            assert child.n_visited != 0, "zero division error"
             t_val = child.n_win * 1. / child.n_visited + \
                     math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
             # c?
@@ -456,13 +472,14 @@ class MTCSAgent(object):
         tic = time()  # in seconds
         while (True):
             mtcs_tree_node, can_end = self.tree_policy(self.mtcs_root_node)
-            toc = time()
-            if (toc - tic > 1 or can_end):
-                break
             # Note: do not affect mtcs_tree_node
             prob = self.default_policy(mtcs_tree_node)
             # print prob
             self.back_up(mtcs_tree_node, prob)
+            toc = time()
+            if (toc - tic > 1 or can_end):
+                break
+
         result = self.best_child(self.mtcs_root_node)
         return result.last_action
 
