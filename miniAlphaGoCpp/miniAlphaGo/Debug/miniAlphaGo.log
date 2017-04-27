@@ -1,5 +1,5 @@
 ﻿  mcts.cpp
-c:\users\luzai\pycharmprojects\minialphago\minialphagocpp\minialphago\mcts.cpp(106): warning C4018: '<': signed/unsigned mismatch
-c:\users\luzai\pycharmprojects\minialphago\minialphagocpp\minialphago\mcts.cpp(158): warning C4715: 'expand': not all control paths return a value
-  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.exe
-  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.pdb (Full PDB)
+c:\users\luzai\pycharmprojects\ai\minialphago\minialphagocpp\minialphago\mcts.cpp(106): warning C4018: '<': signed/unsigned mismatch
+c:\users\luzai\pycharmprojects\ai\minialphago\minialphagocpp\minialphago\mcts.cpp(158): warning C4715: 'expand': not all control paths return a value
+  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\ai\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.exe
+  miniAlphaGo.vcxproj -> C:\Users\luzai\PycharmProjects\ai\miniAlphaGo\miniAlphaGoCpp\Debug\miniAlphaGo.pdb (Full PDB)

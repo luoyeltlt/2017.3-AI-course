@@ -1,21 +1,182 @@
+# from __future__ import division
 from Tkinter import *
 import sys, argparse
+import math
 from math import *
 from time import *
 from random import *
 from copy import deepcopy
+import numpy as np
+
+
+
+class DumbAgent(object):
+    def agent_get_action(self, board, player=None):
+        actions = board.get_action(board.player)
+        return actions[0] if len(actions) != 0 else None
+
+
+class GUI(object):
+    def __init__(self, screen, board):
+        self.screen = screen
+        self.init(board)
+
+    def init(self, board):
+        # Drawing the intermediate lines
+        for i in range(7):
+            lineShift = 50 + 50 * (i + 1)
+
+            # Horizontal line
+            self.screen.create_line(50, lineShift, 450, lineShift, fill="#111")
+
+            # Vertical line
+            self.screen.create_line(lineShift, 50, lineShift, 450, fill="#111")
+
+        self.update(board)
+
+        # Checks if a move is valid for a given array.
+
+    def update(self, board):
+        self.screen.delete("highlight")
+        self.screen.delete("tile")
+        for x in range(8):
+            for y in range(8):
+                # Could replace the circles with images later, if I want
+                if board.oldarray[x][y] == "w":
+                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y,
+                                            tags="tile {0}-{1}".format(x, y), fill="#aaa", outline="#aaa")
+                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y,
+                                            tags="tile {0}-{1}".format(x, y), fill="#fff", outline="#fff")
+
+                elif board.oldarray[x][y] == "b":
+                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y,
+                                            tags="tile {0}-{1}".format(x, y), fill="#000", outline="#000")
+                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y,
+                                            tags="tile {0}-{1}".format(x, y), fill="#111", outline="#111")
+        # Animation of new tiles
+        self.screen.update()
+        for x in range(8):
+            for y in range(8):
+                # Could replace the circles with images later, if I want
+                if board.array[x][y] != board.oldarray[x][y] and board.array[x][y] == "w":
+                    self.screen.delete("{0}-{1}".format(x, y))
+                    # 42 is width of tile so 21 is half of that
+                    # Shrinking
+                    for i in range(21):
+                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
+                                                tags="tile animated", fill="#000", outline="#000")
+                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
+                                                tags="tile animated", fill="#111", outline="#111")
+                        if i % 3 == 0:
+                            sleep(0.01)
+                        self.screen.update()
+                        self.screen.delete("animated")
+                    # Growing
+                    for i in reversed(range(21)):
+                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
+                                                tags="tile animated", fill="#aaa", outline="#aaa")
+                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
+                                                tags="tile animated", fill="#fff", outline="#fff")
+                        if i % 3 == 0:
+                            sleep(0.01)
+                        self.screen.update()
+                        self.screen.delete("animated")
+                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y, tags="tile",
+                                            fill="#aaa",
+                                            outline="#aaa")
+                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y, tags="tile",
+                                            fill="#fff",
+                                            outline="#fff")
+                    self.screen.update()
+
+                elif board.array[x][y] != board.oldarray[x][y] and board.array[x][y] == "b":
+                    self.screen.delete("{0}-{1}".format(x, y))
+                    # 42 is width of tile so 21 is half of that
+                    # Shrinking
+                    for i in range(21):
+                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
+                                                tags="tile animated", fill="#aaa", outline="#aaa")
+                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
+                                                tags="tile animated", fill="#fff", outline="#fff")
+                        if i % 3 == 0:
+                            sleep(0.01)
+                        self.screen.update()
+                        self.screen.delete("animated")
+                    # Growing
+                    for i in reversed(range(21)):
+                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
+                                                tags="tile animated", fill="#000", outline="#000")
+                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
+                                                tags="tile animated", fill="#111", outline="#111")
+                        if i % 3 == 0:
+                            sleep(0.01)
+                        self.screen.update()
+                        self.screen.delete("animated")
+
+                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y, tags="tile",
+                                            fill="#000",
+                                            outline="#000")
+                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y, tags="tile",
+                                            fill="#111",
+                                            outline="#111")
+                    self.screen.update()
+
+        # Drawing of highlight circles
+        for x in range(8):
+            for y in range(8):
+                if board.player == 0:
+                    if board.valid(board.array, board.player, x, y):
+                        self.screen.create_oval(68 + 50 * x, 68 + 50 * y, 32 + 50 * (x + 1), 32 + 50 * (y + 1),
+                                                tags="highlight", fill="#008000", outline="#008000")
+
+        # Draw the scoreboard and update the screen
+        self.draw_score_board(board)
+        self.screen.update()
+
+    def draw_score_board(self, board):
+        board.update_score()
+        # Deleting prior score elements
+        self.screen.delete("score")
+
+        # Scoring based on number of tiles
+
+        if board.player == 0:
+            player_colour = "green"
+            computer_colour = "gray"
+        else:
+            player_colour = "gray"
+            computer_colour = "green"
+
+        self.screen.create_oval(5, 540, 25, 560, fill=player_colour, outline=player_colour)
+        self.screen.create_oval(380, 540, 400, 560, fill=computer_colour, outline=computer_colour)
+
+        # Pushing text to screen
+        self.screen.create_text(30, 550, anchor="w", tags="score", font=("Consolas", 50), fill="white",
+                                text=board.white_score)
+        self.screen.create_text(400, 550, anchor="w", tags="score", font=("Consolas", 50), fill="black",
+                                text=board.black_score)
+
+    def draw_board_move(self, board, x, y):
+
+        # Move and update screen
+        board.oldarray = board.array
+        board.oldarray[x][y] = "w"
+        board.array = board.move(board.array, x, y)
+
+        # Switch Player
+        board.player = 1 - board.player
+        self.update(board)
 
 
 class Board(object):
-    def __init__(self, in_screen):
+    def __init__(self):
         # White goes first (0 is white and player,1 is black and computer)
-        self.screen = in_screen
         self.player = 0
 
-        self.ttl_score=0
-        self.computer_score=0
-        self.player_score=0
-
+        self.ttl_score = 0
+        self.black_score = 0
+        self.white_score = 0
+        self._next_action = None
         # Initializing an empty board
         self.array = []
         for x in range(8):
@@ -30,23 +191,21 @@ class Board(object):
         self.array[4][4] = "w"
 
         # Initializing old values
-        self.oldarray = self.array
-
-        # Drawing the intermediate lines
-        for i in range(7):
-            lineShift = 50 + 50 * (i + 1)
-
-            # Horizontal line
-            self.screen.create_line(50, lineShift, 450, lineShift, fill="#111")
-
-            # Vertical line
-            self.screen.create_line(lineShift, 50, lineShift, 450, fill="#111")
-
-        self.update()
-
-        # Checks if a move is valid for a given array.
-
-    def valid(self, array, player, x, y):
+        self.oldarray = deepcopy(self.array)
+    def update_score(self):
+        white_score = 0
+        black_score = 0
+        for x in range(8):
+            for y in range(8):
+                if self.array[x][y] == "w":
+                    white_score += 1
+                elif self.array[x][y] == "b":
+                    black_score += 1
+        self.black_score=black_score
+        self.white_score=white_score
+        self.ttl_score=self.black_score+self.white_score
+    @staticmethod
+    def valid(array, player, x, y):
         # Sets player colour
         if player == 0:
             colour = "w"
@@ -54,7 +213,7 @@ class Board(object):
             colour = "b"
 
         # If there's already a piece there, it's an invalid move
-        if array[x][y] != None:
+        if array[x][y] is not None:
             return False
 
         else:
@@ -101,157 +260,29 @@ class Board(object):
                             tempY += deltaY
                 return valid
 
-    def get_action(self, player):
+    def get_action(self, player=None):
+        if player is None:
+            player=self.player
+        # if self._next_action is None:
         action = []
         for x in range(8):
             for y in range(8):
 
                 if self.valid(self.array, player, x, y):
                     action.append([x, y])
+        self._next_action = action
         return action
+        # else:
+        #     return self._next_action
+            # Updating the board to the screen
 
-        # Updating the board to the screen
-
-    def update(self):
-        self.screen.delete("highlight")
-        self.screen.delete("tile")
-        for x in range(8):
-            for y in range(8):
-                # Could replace the circles with images later, if I want
-                if self.oldarray[x][y] == "w":
-                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y,
-                                            tags="tile {0}-{1}".format(x, y), fill="#aaa", outline="#aaa")
-                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y,
-                                            tags="tile {0}-{1}".format(x, y), fill="#fff", outline="#fff")
-
-                elif self.oldarray[x][y] == "b":
-                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y,
-                                            tags="tile {0}-{1}".format(x, y), fill="#000", outline="#000")
-                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y,
-                                            tags="tile {0}-{1}".format(x, y), fill="#111", outline="#111")
-        # Animation of new tiles
-        self.screen.update()
-        for x in range(8):
-            for y in range(8):
-                # Could replace the circles with images later, if I want
-                if self.array[x][y] != self.oldarray[x][y] and self.array[x][y] == "w":
-                    self.screen.delete("{0}-{1}".format(x, y))
-                    # 42 is width of tile so 21 is half of that
-                    # Shrinking
-                    for i in range(21):
-                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
-                                                tags="tile animated", fill="#000", outline="#000")
-                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
-                                                tags="tile animated", fill="#111", outline="#111")
-                        if i % 3 == 0:
-                            sleep(0.01)
-                        self.screen.update()
-                        self.screen.delete("animated")
-                    # Growing
-                    for i in reversed(range(21)):
-                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
-                                                tags="tile animated", fill="#aaa", outline="#aaa")
-                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
-                                                tags="tile animated", fill="#fff", outline="#fff")
-                        if i % 3 == 0:
-                            sleep(0.01)
-                        self.screen.update()
-                        self.screen.delete("animated")
-                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y, tags="tile",
-                                            fill="#aaa",
-                                            outline="#aaa")
-                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y, tags="tile",
-                                            fill="#fff",
-                                            outline="#fff")
-                    self.screen.update()
-
-                elif self.array[x][y] != self.oldarray[x][y] and self.array[x][y] == "b":
-                    self.screen.delete("{0}-{1}".format(x, y))
-                    # 42 is width of tile so 21 is half of that
-                    # Shrinking
-                    for i in range(21):
-                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
-                                                tags="tile animated", fill="#aaa", outline="#aaa")
-                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
-                                                tags="tile animated", fill="#fff", outline="#fff")
-                        if i % 3 == 0:
-                            sleep(0.01)
-                        self.screen.update()
-                        self.screen.delete("animated")
-                    # Growing
-                    for i in reversed(range(21)):
-                        self.screen.create_oval(54 + i + 50 * x, 54 + i + 50 * y, 96 - i + 50 * x, 96 - i + 50 * y,
-                                                tags="tile animated", fill="#000", outline="#000")
-                        self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
-                                                tags="tile animated", fill="#111", outline="#111")
-                        if i % 3 == 0:
-                            sleep(0.01)
-                        self.screen.update()
-                        self.screen.delete("animated")
-
-                    self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y, tags="tile",
-                                            fill="#000",
-                                            outline="#000")
-                    self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y, tags="tile",
-                                            fill="#111",
-                                            outline="#111")
-                    self.screen.update()
-
-        # Drawing of highlight circles
-        for x in range(8):
-            for y in range(8):
-                if self.player == 0:
-                    if self.valid(self.array, self.player, x, y):
-                        self.screen.create_oval(68 + 50 * x, 68 + 50 * y, 32 + 50 * (x + 1), 32 + 50 * (y + 1),
-                                                tags="highlight", fill="#008000", outline="#008000")
-
-
-        # Draw the scoreboard and update the screen
-        self.drawScoreBoard()
-        self.screen.update()
-
-
-    def mustPass(self, player):
+    def must_pass(self, player):
         must_pass = True
         for x in range(8):
             for y in range(8):
-                if self.valid(self.array, player, x, y  ):
+                if self.valid(self.array, player, x, y):
                     must_pass = False
         return must_pass
-
-    def drawScoreBoard(self):
-
-        # Deleting prior score elements
-        self.screen.delete("score")
-
-        # Scoring based on number of tiles
-        player_score = 0
-        computer_score = 0
-        for x in range(8):
-            for y in range(8):
-                if self.array[x][y] == "w":
-                    player_score += 1
-                elif self.array[x][y] == "b":
-                    computer_score += 1
-
-        if self.player == 0:
-            player_colour = "green"
-            computer_colour = "gray"
-        else:
-            player_colour = "gray"
-            computer_colour = "green"
-
-        self.screen.create_oval(5, 540, 25, 560, fill=player_colour, outline=player_colour)
-        self.screen.create_oval(380, 540, 400, 560, fill=computer_colour, outline=computer_colour)
-
-        # Pushing text to screen
-        self.screen.create_text(30, 550, anchor="w", tags="score", font=("Consolas", 50), fill="white",
-                                text=player_score)
-        self.screen.create_text(400, 550, anchor="w", tags="score", font=("Consolas", 50), fill="black",
-                                text=computer_score)
-        self.computer_score=computer_score
-        self.player_score=player_score
-        self.ttl_score= computer_score + player_score
 
     def move(self, passedArray, x, y):
         # Must copy the passedArray so we don't alter the original
@@ -314,60 +345,126 @@ class Board(object):
 
         return array
 
-    def boardMove(self, x, y):
 
-        # Move and update screen
-        self.oldarray = self.array
-        self.oldarray[x][y] = "w"
-        self.array = self.move(self.array, x, y)
+class TreeNode(object):
+    def __init__(self, *args, **kwargs):
+        self.child = []
+        self._next_action = []
+        self.next_action_visited = set()
 
-        # Switch Player
-        self.player = 1 - self.player
-        self.update()
+        self.parent = None
+        self.last_action = None
+
+        self.board = deepcopy(kwargs.get('board', None))
+        self.n_visited = 0
+        self.n_win = 0
+
+    def get_next_action(self):
+        # if not self._next_action:
+        action = self.board.get_action()
+        # self._next_action = action
+        return action #self._next_action
+
+    def move_2_next_state(self, action):
+        next_node = TreeNode(board=self.board)
+        next_node.board.array = next_node.board.move(self.board.array, *action)
+        next_node.board.player = 1 - self.board.player
+        next_node.last_action = action
+        next_node.parent = self
+        return next_node
+
+# class Tree(object):
+#     def __init__(self, *args, **kwargs):
+#         if len(kwargs) == 0:
+#             self.root = TreeNode()
+#         elif len(kwargs) == 1 and kwargs.get('board', None) is not None:
+#             self.root = TreeNode(kwargs.get('board'))
+#         elif len(kwargs) == 1 and kwargs.get('tree_node', None) is not None:
+#             self.root = kwargs.get('tree_node')
 
 
-class DumbAgent(object):
-    def get_action(self,board):
-        actions=board.get_action(1)
-        return actions[0] if len(actions)!=0 else None
+class MTCSAgent(object):
+    def __init__(self):
+        self.mtcs_root_node = None
 
-def clickHandle(event):
-    global agent,board
-    if board.mustPass(0)==True and board.mustPass(1)==True:
-        if board.player_score>board.computer_score:
-            over_text="You Win"
-        elif board.player_score<board.computer_score:
-            over_text="Computer Win"
+    def expand(self, tree_node):
+        next_actions = tree_node.get_next_action()
+        for i in range(len(next_actions)):
+            if i in tree_node.next_action_visited:
+                continue
+            action = next_actions[i]
+            next_node = tree_node.move_2_next_state(action)
+            tree_node.child.append(next_node)
+            tree_node.next_action_visited.add(i)
+            return next_node
+            # must can return
+
+    def is_final(self, tree_node):
+        now_board = tree_node.board
+        return (now_board.must_pass(0) and now_board.must_pass(1))
+
+    def tree_policy(self, tree_node):
+        while not self.is_final(tree_node):
+            if len(tree_node.child) < len(tree_node.get_next_action()):
+                next_node = self.expand(tree_node)
+                return next_node, False
+            elif len(tree_node.child) != 0:
+                tree_node = self.best_child(tree_node)
+            else:
+                print "some exception..."
+        return tree_node, True  # All Node is explored
+
+    def default_policy(self, tree_node_in):
+        tree_node = deepcopy(tree_node_in)  # avoid modify tree_node_in
+        while not self.is_final(tree_node):
+            actions = tree_node.get_next_action()
+            if not actions:
+                tree_node.board.player = 1 - tree_node.board.player
+            else:
+                action = actions[np.random.randint(0,len(actions))]
+                tree_node = tree_node.move_2_next_state( action)
+        tree_node.board.update_score()
+        if tree_node_in.board.player == 0:  # 0 is white and 1 is black
+            prob_4_curr_player = tree_node.board.white_score*1. / tree_node.board.ttl_score
         else:
-            over_text="Balance"
+            prob_4_curr_player = tree_node.board.black_score*1. / tree_node.board.ttl_score
+        return prob_4_curr_player
 
-        board.screen.create_text(250, 550, anchor="c", font=("Consolas", 15), text=over_text)
+    def back_up(self, tree_node, prob):
+        while tree_node is not None:
+            tree_node.n_visited += 1
+            tree_node.n_win += prob
+            prob = 1 - prob
+            tree_node = tree_node.parent
 
-    # print board.player
-    assert board.player == 0, "not your move?"
-    print board.get_action(0)
-    if board.mustPass(0)==True:
-        print "You Have No Choose"
-        board.player=1-board.player
-    else:
-        # Delete the highlights
-        x = int((event.x - 50) / 50)
-        y = int((event.y - 50) / 50)
-        # Determine the grid index for where the mouse was clicked
+    def best_child(self, tree_node):
+        best_child = tree_node.child[0]  # assert there is at least a child
+        best_val = -1
+        for child in tree_node.child:
+            t_val = child.n_win * 1. / child.n_visited + \
+                    math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
+            # c?
+            if t_val > best_val:
+                best_child = child
 
-        # If the click is inside the bounds and the move is valid, move to that location
-        if 0 <= x <= 7 and 0 <= y <= 7:
-            if board.valid(board.array, board.player, x, y):
-                board.boardMove(x, y)
+        return best_child
 
-    assert  board.player==1,"not computer move?"
-    if board.mustPass(1)==True:
-        board.player = 1 - board.player
-        print "Computer No Choose"
-    else:
-        action=agent.get_action(board)
-        board.boardMove(*action)
-
+    def agent_get_action(self, board):
+        assert board.player == 1, "1 computer black temporarily"
+        # mtcs_tree = Tree(board)
+        self.mtcs_root_node = TreeNode(board=board)
+        tic = time()  # in seconds
+        while (True):
+            mtcs_tree_node, can_end = self.tree_policy(self.mtcs_root_node)
+            toc = time()
+            if (toc - tic > 1 or can_end):
+                break
+            # Note: do not affect mtcs_tree_node
+            prob = self.default_policy(mtcs_tree_node)
+            # print prob
+            self.back_up(mtcs_tree_node, prob)
+        result = self.best_child(self.mtcs_root_node)
+        return result.last_action
 
 
 if __name__ == "__main__":
@@ -377,11 +474,14 @@ if __name__ == "__main__":
 
     agent = DumbAgent()
 
-    # Binding, setting
-    main_screen.bind("<Button-1>", clickHandle)
-    # main_screen.bind("<Key>", keyHandle)
     main_screen.focus_set()
 
-    board = Board(main_screen)
+    board = Board()
+    gui = GUI(screen=main_screen, board=board)
     root.wm_title("Reversi")
-    root.mainloop()
+    # root.mainloop()
+    node1 = TreeNode(board=board)
+    node2 = TreeNode(board=board)
+    print node1.board.array
+    node2.board.array[0][0] = 100
+    print node1.board.array

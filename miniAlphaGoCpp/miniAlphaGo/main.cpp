@@ -6,10 +6,10 @@ extern "C" {
 
 State  state;
 int chessNum(0);
-//ChessType humanColor(black);
-//ChessType computerColor(white);
-ChessType humanColor(white);
-ChessType computerColor(black);
+ChessType humanColor(black);
+ChessType computerColor(white);
+//ChessType humanColor(white);
+//ChessType computerColor(black);
 bool humanInput(true);
 
 void sgSetup() {

@@ -71,7 +71,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;G:\lab\ai\miniAlphaGo\miniAlphaGo\Code\lib\VS;</LibraryPath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;C:\Users\luzai\PycharmProjects\ai\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\lib\VS</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -89,12 +89,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\luzai\PycharmProjects\ai\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\lib;C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\lib\VS;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\luzai\PycharmProjects\ai\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\lib\VS;C:\Users\luzai\PycharmProjects\miniAlphaGo\miniAlphaGoCpp\miniAlphaGo\Code\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winsgld.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

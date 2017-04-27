@@ -82,7 +82,7 @@ Position getNextPosition2(State& s ,ChessType type) {
 	while (true) {
 		Vertex* vl = treePolicy(v0);
 		end = clock();
-		if (end - start > 300000 || isEnd) {
+		if (end - start > 3000 || isEnd) {
 			break;
 		}
 		int deta = defaultPolicy(vl->s, vl->lastType);
@@ -168,7 +168,9 @@ Vertex* bestChild(Vertex* v, int c) {
 		if ((x == 0 && y == 0) || (x == 7 && y == 7) || (x == 0 && y == 7) || (x == 7 && y == 0)) {
 			return child;
 		}
-		temp = child->q*1.0 / child->visitedNum + c*1.0 * sqrt(2 * log(v->visitedNum) / child->visitedNum);
+		temp = child->q*1.0 / child->visitedNum
+		+
+			c*1.0 * sqrt(2 * log(v->visitedNum) / child->visitedNum);
 		if (temp > value) {
 			result = child;
 			value = temp;
