@@ -1,7 +1,8 @@
 # from __future__ import division
 from Tkinter import *
-import sys, argparse
-import math
+import  argparse,math,cPickle
+import os,sys
+import glob
 from math import *
 from time import *
 from random import *
@@ -135,7 +136,7 @@ class GUI(object):
         # Drawing of highlight circles
         for x in range(8):
             for y in range(8):
-                if board.player == 0:
+                if board.player == Config.player_color:
                     if board.valid(board.array, board.player, x, y):
                         self.screen.create_oval(68 + 50 * x, 68 + 50 * y, 32 + 50 * (x + 1), 32 + 50 * (y + 1),
                                                 tags="highlight", fill="#008000", outline="#008000")
@@ -151,21 +152,21 @@ class GUI(object):
 
         # Scoring based on number of tiles
 
-        if board.player == 0:
-            player_colour = "green"
-            computer_colour = "gray"
-        else:
-            player_colour = "gray"
-            computer_colour = "green"
+        # if board.player == 0:
+        player_colour = "black"
+        computer_colour = "white"
+        # else:
+        #     player_colour = "gray"
+        #     computer_colour = "green"
 
         self.screen.create_oval(5, 540, 25, 560, fill=player_colour, outline=player_colour)
         self.screen.create_oval(380, 540, 400, 560, fill=computer_colour, outline=computer_colour)
 
         # Pushing text to screen
-        self.screen.create_text(30, 550, anchor="w", tags="score", font=("Consolas", 50), fill="white",
-                                text=board.white_score)
-        self.screen.create_text(400, 550, anchor="w", tags="score", font=("Consolas", 50), fill="black",
+        self.screen.create_text(30, 550, anchor="w", tags="score", font=("Consolas", 50), fill="black",
                                 text=board.black_score)
+        self.screen.create_text(400, 550, anchor="w", tags="score", font=("Consolas", 50), fill="white",
+                                text=board.white_score)
 
 
 class CLI(object):
@@ -243,9 +244,9 @@ class Board(object):
     def valid(array, player, x, y):
         # Sets player colour
         if player == 0:
-            colour = "w"
-        else:
             colour = "b"
+        else:
+            colour = "w"
 
         # If there's already a piece there, it's an invalid move
         if array[x][y] is not None:
@@ -322,9 +323,9 @@ class Board(object):
     def self_move(self, x, y):
         self.oldarray = deepcopy(self.array)
         if self.player == 0:
-            self.oldarray[x][y] = "w"
-        else:
             self.oldarray[x][y] = "b"
+        else:
+            self.oldarray[x][y] = "w"
         self.array = self.move(self.array, x, y)
 
         # Switch Player
@@ -335,9 +336,9 @@ class Board(object):
         array = deepcopy(passedArray)
         # Set colour and set the moved location to be that colour
         if self.player == 0:
-            colour = "w"
-        else:
             colour = "b"
+        else:
+            colour = "w"
         array[x][y] = colour
 
         # Determining the neighbours to the square
