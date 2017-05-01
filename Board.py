@@ -7,8 +7,8 @@ from time import *
 from random import *
 from copy import deepcopy
 import numpy as np
-
-
+import pprint
+from main import Config
 
 class DumbAgent(object):
     def agent_get_action(self, board, player=None):
@@ -168,6 +168,38 @@ class GUI(object):
                                 text=board.black_score)
 
 
+class CLI(object):
+    def __init__(self, board):
+
+        self.init(board)
+
+    def handle_finish(self, board):
+        # global result
+        if board.must_pass(0) == True and board.must_pass(1) == True:
+            print "Game Finish"
+            if board.white_score > board.black_score:
+                over_text = "You Win"
+            elif board.white_score < board.black_score:
+                over_text = "Computer Win"
+            else:
+                over_text = "Balance"
+            print over_text
+            # print result
+            # exit(1)
+            return "Exit"
+
+    def init(self, board):
+        # pprint.pprint(board.array)
+        self.update(board)
+
+    def update(self, board):
+        pprint.pprint(board.array)
+        self.draw_score_board(board)
+
+    def draw_score_board(self, board):
+        board.update_score()
+        print "white has ", board.white_score, " black has ", board.black_score
+
 
 class Board(object):
     def __init__(self):
@@ -286,9 +318,13 @@ class Board(object):
                 if self.valid(self.array, player, x, y):
                     must_pass = False
         return must_pass
-    def self_move(self,x,y):
+
+    def self_move(self, x, y):
         self.oldarray = deepcopy(self.array)
-        self.oldarray[x][y] = "w"
+        if self.player == 0:
+            self.oldarray[x][y] = "w"
+        else:
+            self.oldarray[x][y] = "b"
         self.array = self.move(self.array, x, y)
 
         # Switch Player
@@ -459,27 +495,30 @@ class MTCSAgent(object):
             assert child.n_visited != 0, "zero division error"
             t_val = child.n_win * 1. / child.n_visited + \
                     math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
-            # c?
+
             if t_val > best_val:
                 best_child = child
 
         return best_child
 
     def agent_get_action(self, board):
-        assert board.player == 1, "1 computer black temporarily"
+        # assert board.player == 1, "1 computer black temporarily"
         # mtcs_tree = Tree(board)
         self.mtcs_root_node = TreeNode(board=board)
         tic = time()  # in seconds
-        while (True):
+        i = 0
+        while True:
+            i += 1
             mtcs_tree_node, can_end = self.tree_policy(self.mtcs_root_node)
             # Note: do not affect mtcs_tree_node
             prob = self.default_policy(mtcs_tree_node)
             # print prob
             self.back_up(mtcs_tree_node, prob)
             toc = time()
-            if (toc - tic > 1 or can_end):
+            if (toc - tic > Config.rollout_time or can_end):
                 break
-
+        print time() - tic
+        print i
         result = self.best_child(self.mtcs_root_node)
         return result.last_action
 
