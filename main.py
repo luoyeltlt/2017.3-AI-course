@@ -1,18 +1,17 @@
 from Board import *
 
-
 class Config(object):
     player_color = 0
     # 0 is black first
     # 1 is white second
-    player_computer = False
-    use_cli = False
+    player_computer = True
+    use_cli = True
     rollout_time=0.5
 
 def clickHandle(event):
     # global agent,board
     if interface_factory.handle_finish(board)=="Exit":
-        result.append([[board.white_score-board.black_score]])
+        result.append([[board.white_score,board.black_score]])
         print result
         os.chdir("output")
         files = glob.glob("*.pkl")
@@ -23,8 +22,13 @@ def clickHandle(event):
         print file
         with open(str(file) + ".pkl", "w") as f:
             cPickle.dump(result, f)
+        if board.white_score-board.black_score>=0:
+            exit(1)
+        elif board.white_score-board.black_score==0:
+            exit(2)
+        else:
+            exit(3)
 
-        exit(1)
     action = None
     assert board.player == 0,"now be black"
 
@@ -74,7 +78,7 @@ def clickHandle(event):
                 print "Your input error, input again: "
                 return
         else:
-            action = agent.agent_get_action(board)
+            action = agent2.agent_get_action(board) # agent2
             board.self_move(*action)
             interface_factory.update(board)
     result.append([[1], [action], [board.array]])
@@ -116,8 +120,6 @@ def clickHandle2(event):
             # Delete the highlights
             x = int((event.x - 50) / 50)
             y = int((event.y - 50) / 50)
-            # Determine the grid index for where the mouse was clicked
-            # If the click is inside the bounds and the move is valid, move to that location
             if 0 <= x <= 7 and 0 <= y <= 7:
                 if board.valid(board.array, board.player, x, y):
                     action = [x, y]
@@ -138,13 +140,12 @@ def clickHandle2(event):
     if board.must_pass(0):
         print "black Have No Choose"
         board.player = 1 - board.player
+        interface_factory.update(board)
     else:
         if not Config.player_computer and Config.player_color==0:
             # Delete the highlights
             x = int((event.x - 50) / 50)
             y = int((event.y - 50) / 50)
-            # Determine the grid index for where the mouse was clicked
-            # If the click is inside the bounds and the move is valid, move to that location
             if 0 <= x <= 7 and 0 <= y <= 7 and board.valid(board.array, board.player, x, y):
                 action=[x,y]
                 board.self_move(x, y)
@@ -158,7 +159,7 @@ def clickHandle2(event):
             interface_factory.update(board)
     result.append([[0], [action], [board.array]])
 
-    print "black has ", board.get_action(0)
+    print "white has ", board.get_action(1)
     if interface_factory.handle_finish(board)=="Exit":
         print result
         # exit(1)
@@ -196,6 +197,7 @@ if __name__ == "__main__":
         board = Board()
         interface_factory = CLI(board=board)
         agent = MTCSAgent()
+        agent2=DumbAgent()
         while True:
             clickHandle(None)
             # print result

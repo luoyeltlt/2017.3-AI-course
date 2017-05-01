@@ -394,22 +394,26 @@ class Board(object):
 
 class TreeNode(object):
     def __init__(self, *args, **kwargs):
+
         self.child = []
         self._next_action = []
         self.next_action_visited = set()
 
         self.parent = None
         self.last_action = None
-
-        self.board = deepcopy(kwargs.get('board', None))
+        if kwargs.has_key('tree_node'):
+            self.board=deepcopy(kwargs.get('tree_node').board)
+        else:
+            self.board = deepcopy(kwargs.get('board', None))
         self.n_visited = 0
         self.n_win = 0
 
     def get_next_action(self):
-        # if not self._next_action:
-        action = self.board.get_action()
-        # self._next_action = action
-        return action  # self._next_action
+        if not self._next_action:
+            action = self.board.get_action()
+            self._next_action = action
+        # else:
+        return self._next_action
 
     def move_2_next_state(self, action):
         next_node = TreeNode(board=self.board)
@@ -459,7 +463,8 @@ class MTCSAgent(object):
                 tree_node = self.best_child(tree_node)
             else:
                 # no chess to put
-                next_node = deepcopy(tree_node)
+                # next_node = deepcopy(tree_node)
+                next_node=TreeNode(tree_node=tree_node)
                 next_node.parent = tree_node
                 next_node.board.player = 1 - tree_node.board.player
                 return next_node, False
@@ -468,6 +473,7 @@ class MTCSAgent(object):
 
     def default_policy(self, tree_node_in):
         tree_node = deepcopy(tree_node_in)  # avoid modify tree_node_in
+
         while not self.is_final(tree_node):
             actions = tree_node.get_next_action()
             if not actions:
@@ -489,18 +495,25 @@ class MTCSAgent(object):
             prob = 1 - prob
             tree_node = tree_node.parent
 
-    def best_child(self, tree_node):
-        best_child = tree_node.child[0]  # assert there is at least a child
-        best_val = -1
-        for child in tree_node.child:
-            assert child.n_visited != 0, "zero division error"
-            t_val = child.n_win * 1. / child.n_visited + \
-                    math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
+    def best_child(self, tree_node,info=None):
+        val_child={ (child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)):child for child in tree_node.child }
+        val=val_child.keys()
+        val_ind=np.max(val)
+        if info=="show_info":
+            print "among ", val, "choose" ,val_child[val_ind],"with ",val_ind
+        return val_child[val_ind]
 
-            if t_val > best_val:
-                best_child = child
+        # best_child = tree_node.child[0]  # assert there is at least a child
+        # best_val = -1
+        # for child in tree_node.child:
+        #     assert child.n_visited != 0, "zero division error"
+        #     t_val = child.n_win * 1. / child.n_visited + \
+        #             math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
+        #
+        #     if t_val > best_val:
+        #         best_child = child
 
-        return best_child
+        # return best_child
 
     def agent_get_action(self, board):
         # assert board.player == 1, "1 computer black temporarily"
@@ -518,9 +531,8 @@ class MTCSAgent(object):
             toc = time()
             if (toc - tic > Config.rollout_time or can_end):
                 break
-        print time() - tic
-        print i
-        result = self.best_child(self.mtcs_root_node)
+        print "spend time", time() - tic, " run ", i
+        result = self.best_child(self.mtcs_root_node,"show_info")
         return result.last_action
 
 
