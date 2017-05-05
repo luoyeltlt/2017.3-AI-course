@@ -17,24 +17,25 @@ class DumbAgent(object):
 
 
 class Config(object):
-    def __init__(self, player_color, player_computer, rollout_time,use_socket):
+    def __init__(self, player_color, player_computer, rollout_time, use_socket):
         self.player_color = player_color
         # 0 is black first
         # 1 is white second
         self.player_computer = player_computer
         self.use_cli = self.player_computer
         self.rollout_time = rollout_time
-        self.use_socket=use_socket
+        self.use_socket = use_socket
+
 
 class ComInterface(object):
     def handle_finish(self, board):
         over_text = None
         if board.must_pass(0) == True and board.must_pass(1) == True:
             print "Game Finish"
-            if board.white_score > board.black_score:
-                over_text = "You Win"
-            elif board.white_score < board.black_score:
-                over_text = "Computer Win"
+            if board.white_score < board.black_score:
+                over_text = "black Win"
+            elif board.white_score > board.black_score:
+                over_text = "white Win"
             else:
                 over_text = "Balance"
             print over_text
@@ -54,6 +55,7 @@ class GUI(ComInterface):
         self.screen.create_text(
             250, 550,
             anchor="c", font=("Consolas", 15), text=over_text)
+        return "Exit" if over_text is not None else None
 
     def get_input(self, board):
         self.screen.bind("<Button-1>", self.get_input_callback)
@@ -239,23 +241,23 @@ class SOI(ComInterface):
             self.s.settimeout(None)
             while True:
                 # try:
-                errno=self.s.connect_ex((HOST, PORT))
-                if errno==0:
+                errno = self.s.connect_ex((HOST, PORT))
+                if errno == 0:
                     break
                 else:
                     print "No connection"
-                #     break
-                # except socket.error, exc:
-                #     print "Caught exception socket.error : %s" % exc
-                # else:
-                #     print "Unkown"
+                    #     break
+                    # except socket.error, exc:
+                    #     print "Caught exception socket.error : %s" % exc
+                    # else:
+                    #     print "Unkown"
         else:
-           self.s=None
-        # HOST = '10.214.211.205'
-        # PORT = 8888
-        # self.data = None
-        # self.config_data = None
-        # thread.start_new_thread(self.get_input_callback, ())
+            self.s = None
+            # HOST = '10.214.211.205'
+            # PORT = 8888
+            # self.data = None
+            # self.config_data = None
+            # thread.start_new_thread(self.get_input_callback, ())
 
     # def get_input_callback(self):
     #     while True:
@@ -269,38 +271,41 @@ class SOI(ComInterface):
 
     def _get_input(self):
         # return self.data
-        if not self.s :
+        if not self.s:
             return
-        data=self.s.recv(1024)
+        data = self.s.recv(1024)
         print data
-        data=json.loads(data)
+        data = json.loads(data)
         return data
 
     def get_data_input(self):
         if not self.s:
             return
-        data=self._get_input()
-        return [data['x'],data['y']]
+        data = self._get_input()
+        return [data['x'], data['y']]
+
     def get_config_input(self):
         if not self.s:
             return
-        data=self._get_input()
-        if 'White' in  data.keys():
+        data = self._get_input()
+        if 'White' in data.keys():
             return data
         else:
             return None
-    def send_data(self,action):
+
+    def send_data(self, action):
         if not self.s:
             return
         # str="{" + '"x": {0[0]};  "y": {0[1]}'.format(action)  + "}"
-        action={'x':action[0],'y':action[1]}
-        str=json.dumps(action)
+        action = {'x': action[0], 'y': action[1]}
+        str = json.dumps(action)
         self.s.send(str)
 
+
 class Board(object):
-    def __init__(self,config):
-        # White goes first (0 is white and player,1 is black and computer)
-        self.config=config
+    def __init__(self, config):
+        # White goes first (0 is black and player,1 is white and computer)
+        self.config = config
         self.player = 0
 
         self.ttl_score = 0
@@ -578,10 +583,10 @@ class MTCSAgent(object):
                 action = actions[np.random.randint(0, len(actions))]
                 tree_node = tree_node.move_2_next_state(action)
         tree_node.board.update_score()
-        if tree_node_in.board.player == 0:  # 0 is white and 1 is black
-            prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
-        else:
+        if tree_node_in.board.player == 0:  # 0 is black and 1 is white
             prob_4_curr_player = tree_node.board.black_score * 1. / tree_node.board.ttl_score
+        else:
+            prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
         return prob_4_curr_player
 
     def back_up(self, tree_node, prob):
@@ -591,15 +596,18 @@ class MTCSAgent(object):
             prob = 1 - prob
             tree_node = tree_node.parent
 
-    def best_child(self, tree_node, info=None):
-        val_child = {
-        (child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)): child
-        for child in tree_node.child}
-        val = val_child.keys()
-        val_ind = np.max(val)
+    def best_child(self, tree_node, info=None,use_uct=True):
+        childs=tree_node.child
+        val= [1- child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited) for child in tree_node.child]
+        prob=[1- child.n_win/child.n_visited for child in tree_node.child]
+        val_ind = np.argmax(val)
+        prob_ind=np.argmax(prob)
         if info == "show_info":
-            print "among ", val, "choose", val_child[val_ind].last_action[::-1], "with ", val_ind
-        return val_child[val_ind]
+            if use_uct:
+                print "among ", val, "choose", val[val_ind]
+            else:
+                print "among ", prob,"choose",  prob[prob_ind]
+        return childs[val_ind] if use_uct else childs[prob_ind]
 
         # best_child = tree_node.child[0]  # assert there is at least a child
         # best_val = -1
@@ -627,28 +635,10 @@ class MTCSAgent(object):
             # print prob
             self.back_up(mtcs_tree_node, prob)
             toc = time()
+            # toc=tic
             if (toc - tic > board.config.rollout_time or can_end):
                 break
         print "spend time", time() - tic, " run ", i
-        result = self.best_child(self.mtcs_root_node, "show_info")
+        result = self.best_child(self.mtcs_root_node, "show_info",use_uct=False)
         return result.last_action
 
-
-if __name__ == "__main__":
-    root = Tk()
-    main_screen = Canvas(root, width=500, height=600, background="#555")
-    main_screen.pack()
-
-    agent = DumbAgent()
-
-    main_screen.focus_set()
-
-    board = Board()
-    gui = GUI(tk_screen=main_screen, board=board)
-    root.wm_title("Reversi")
-    # root.mainloop()
-    node1 = TreeNode(board=board)
-    node2 = TreeNode(board=board)
-    print node1.board.array
-    node2.board.array[0][0] = 100
-    print node1.board.array

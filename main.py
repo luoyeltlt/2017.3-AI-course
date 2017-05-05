@@ -100,13 +100,18 @@ def m_main_loop():
             so_interface.send_data(action)
 
         assert board.player==1,"now white"
-        action = so_interface.get_data_input()
+
         if board.must_pass(1):
             print "white no choose"
+            action = so_interface.get_data_input()
             board.player=1-board.player
-            assert action==[-1,-1],"action must be [-1,-1]"
+            if config.use_socket:
+                assert action==[-1,-1],"action must be [-1,-1]"
         else:
-            # action=agent.agent_get_action(board)
+            if config.use_socket:
+                action = so_interface.get_data_input()
+            else:
+                action=agent2.agent_get_action(board)
             board.self_move(*action)
             player_interface.update(board)
 
@@ -114,7 +119,10 @@ def m_main_loop():
 if __name__ == "__main__":
     # global board, interface_factory, result, agent
     result = []
-    config = Config(0, False,0.01,True)
+    config = Config(player_color=0,
+                    player_computer=False ,
+                    rollout_time=0.1,
+                    use_socket=False)
 
     agent=MTCSAgent()
     agent2 = DumbAgent()
