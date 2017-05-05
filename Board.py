@@ -1,15 +1,14 @@
 # from __future__ import division
 from Tkinter import *
-import  argparse,math,cPickle
-import os,sys
-import glob
+import argparse, math, cPickle
+import os, sys, glob
 from math import *
 from time import *
 from random import *
 from copy import deepcopy
 import numpy as np
-import pprint
-from main import Config
+import pprint, socket, json, threading, thread
+
 
 class DumbAgent(object):
     def agent_get_action(self, board, player=None):
@@ -17,12 +16,19 @@ class DumbAgent(object):
         return actions[0] if len(actions) != 0 else None
 
 
-class GUI(object):
-    def __init__(self, screen, board):
-        self.screen = screen
-        self.init(board)
+class Config(object):
+    def __init__(self, player_color, player_computer, rollout_time,use_socket):
+        self.player_color = player_color
+        # 0 is black first
+        # 1 is white second
+        self.player_computer = player_computer
+        self.use_cli = self.player_computer
+        self.rollout_time = rollout_time
+        self.use_socket=use_socket
 
+class ComInterface(object):
     def handle_finish(self, board):
+        over_text = None
         if board.must_pass(0) == True and board.must_pass(1) == True:
             print "Game Finish"
             if board.white_score > board.black_score:
@@ -31,7 +37,41 @@ class GUI(object):
                 over_text = "Computer Win"
             else:
                 over_text = "Balance"
-            self.screen.create_text(250, 550, anchor="c", font=("Consolas", 15), text=over_text)
+            print over_text
+
+        return over_text
+
+
+class GUI(ComInterface):
+    def __init__(self, tk_screen, tk_root, board):
+        self.screen = tk_screen
+        self.root = tk_root
+        self.input = None
+        self.init(board)
+
+    def handle_finish(self, board):
+        over_text = super(GUI, self).handle_finish(board)
+        self.screen.create_text(
+            250, 550,
+            anchor="c", font=("Consolas", 15), text=over_text)
+
+    def get_input(self, board):
+        self.screen.bind("<Button-1>", self.get_input_callback)
+        while True:
+            self.root.mainloop()
+            x, y = self.input
+            if board.valid(board.array, board.player, x, y):
+                break
+            else:
+                print "illegal input!"
+        return self.input
+
+    def get_input_callback(self, event):
+        x = int((event.x - 50) / 50)
+        y = int((event.y - 50) / 50)
+        if 0 <= x <= 7 and 0 <= y <= 7:
+            self.input = [x, y]
+            self.root.quit()
 
     def init(self, board):
         # Drawing the intermediate lines
@@ -66,7 +106,7 @@ class GUI(object):
                     self.screen.create_oval(54 + 50 * x, 52 + 50 * y, 96 + 50 * x, 94 + 50 * y,
                                             tags="tile {0}-{1}".format(x, y), fill="#111", outline="#111")
         # Animation of new tiles
-        self.screen.update()
+        # self.screen.update()
         for x in range(8):
             for y in range(8):
                 # Could replace the circles with images later, if I want
@@ -136,7 +176,7 @@ class GUI(object):
         # Drawing of highlight circles
         for x in range(8):
             for y in range(8):
-                if board.player == Config.player_color:
+                if board.player == board.config.player_color:
                     if board.valid(board.array, board.player, x, y):
                         self.screen.create_oval(68 + 50 * x, 68 + 50 * y, 32 + 50 * (x + 1), 32 + 50 * (y + 1),
                                                 tags="highlight", fill="#008000", outline="#008000")
@@ -169,25 +209,13 @@ class GUI(object):
                                 text=board.white_score)
 
 
-class CLI(object):
+class CLI(ComInterface):
     def __init__(self, board):
-
         self.init(board)
 
     def handle_finish(self, board):
-        # global result
-        if board.must_pass(0) == True and board.must_pass(1) == True:
-            print "Game Finish"
-            if board.white_score > board.black_score:
-                over_text = "You Win"
-            elif board.white_score < board.black_score:
-                over_text = "Computer Win"
-            else:
-                over_text = "Balance"
-            print over_text
-            # print result
-            # exit(1)
-            return "Exit"
+        over_text = super(CLI, self).handle_finish(board=board)
+        return "Exit" if over_text is not None else None
 
     def init(self, board):
         # pprint.pprint(board.array)
@@ -202,9 +230,77 @@ class CLI(object):
         print "white has ", board.white_score, " black has ", board.black_score
 
 
+class SOI(ComInterface):
+    def __init__(self, config):
+        if config.use_socket:
+            HOST = '127.0.0.1'
+            PORT = 6000
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.settimeout(None)
+            while True:
+                # try:
+                errno=self.s.connect_ex((HOST, PORT))
+                if errno==0:
+                    break
+                else:
+                    print "No connection"
+                #     break
+                # except socket.error, exc:
+                #     print "Caught exception socket.error : %s" % exc
+                # else:
+                #     print "Unkown"
+        else:
+           self.s=None
+        # HOST = '10.214.211.205'
+        # PORT = 8888
+        # self.data = None
+        # self.config_data = None
+        # thread.start_new_thread(self.get_input_callback, ())
+
+    # def get_input_callback(self):
+    #     while True:
+    #         sleep(10)
+    #         data = self.s.recv(1024)
+    #         data = json.loads(data)
+    #         if "White" in data.keys():
+    #             self.config_data = data
+    #         if data != self.data:
+    #             self.data = data
+
+    def _get_input(self):
+        # return self.data
+        if not self.s :
+            return
+        data=self.s.recv(1024)
+        print data
+        data=json.loads(data)
+        return data
+
+    def get_data_input(self):
+        if not self.s:
+            return
+        data=self._get_input()
+        return [data['x'],data['y']]
+    def get_config_input(self):
+        if not self.s:
+            return
+        data=self._get_input()
+        if 'White' in  data.keys():
+            return data
+        else:
+            return None
+    def send_data(self,action):
+        if not self.s:
+            return
+        # str="{" + '"x": {0[0]};  "y": {0[1]}'.format(action)  + "}"
+        action={'x':action[0],'y':action[1]}
+        str=json.dumps(action)
+        self.s.send(str)
+
 class Board(object):
-    def __init__(self):
+    def __init__(self,config):
         # White goes first (0 is white and player,1 is black and computer)
+        self.config=config
         self.player = 0
 
         self.ttl_score = 0
@@ -402,7 +498,7 @@ class TreeNode(object):
         self.parent = None
         self.last_action = None
         if kwargs.has_key('tree_node'):
-            self.board=deepcopy(kwargs.get('tree_node').board)
+            self.board = deepcopy(kwargs.get('tree_node').board)
         else:
             self.board = deepcopy(kwargs.get('board', None))
         self.n_visited = 0
@@ -464,7 +560,7 @@ class MTCSAgent(object):
             else:
                 # no chess to put
                 # next_node = deepcopy(tree_node)
-                next_node=TreeNode(tree_node=tree_node)
+                next_node = TreeNode(tree_node=tree_node)
                 next_node.parent = tree_node
                 next_node.board.player = 1 - tree_node.board.player
                 return next_node, False
@@ -495,12 +591,14 @@ class MTCSAgent(object):
             prob = 1 - prob
             tree_node = tree_node.parent
 
-    def best_child(self, tree_node,info=None):
-        val_child={ (child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)):child for child in tree_node.child }
-        val=val_child.keys()
-        val_ind=np.max(val)
-        if info=="show_info":
-            print "among ", val, "choose" ,val_child[val_ind],"with ",val_ind
+    def best_child(self, tree_node, info=None):
+        val_child = {
+        (child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)): child
+        for child in tree_node.child}
+        val = val_child.keys()
+        val_ind = np.max(val)
+        if info == "show_info":
+            print "among ", val, "choose", val_child[val_ind].last_action[::-1], "with ", val_ind
         return val_child[val_ind]
 
         # best_child = tree_node.child[0]  # assert there is at least a child
@@ -529,10 +627,10 @@ class MTCSAgent(object):
             # print prob
             self.back_up(mtcs_tree_node, prob)
             toc = time()
-            if (toc - tic > Config.rollout_time or can_end):
+            if (toc - tic > board.config.rollout_time or can_end):
                 break
         print "spend time", time() - tic, " run ", i
-        result = self.best_child(self.mtcs_root_node,"show_info")
+        result = self.best_child(self.mtcs_root_node, "show_info")
         return result.last_action
 
 
@@ -546,7 +644,7 @@ if __name__ == "__main__":
     main_screen.focus_set()
 
     board = Board()
-    gui = GUI(screen=main_screen, board=board)
+    gui = GUI(tk_screen=main_screen, board=board)
     root.wm_title("Reversi")
     # root.mainloop()
     node1 = TreeNode(board=board)
