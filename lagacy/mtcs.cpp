@@ -503,9 +503,25 @@ Vertex* expand(Vertex* v);
 
 void backUp(Vertex* v, int deta);
 
+Vertex* getTree(State& s, ChessType type) {
+	if (tree == nullptr) {
+		tree = new Vertex(s, Position(-1, -1), static_cast<ChessType>(1 - type), nullptr);
+		return tree;
+	}
+	else {
+		Vertex* child = tree->child;
+		while (child != nullptr) {
+			if (child->s == s) {
+				child->parent = nullptr;
+				return child;
+			}
+			child = child->brother;
+		}
+	}
+}
+
 Position getNextPosition2(State& s ,ChessType type) {
-	Vertex* v0 = new Vertex(s, Position(-1, -1),static_cast<ChessType>(1-type), nullptr);
-	Position result;
+	Vertex* v0 = getTree(s, type);
 	int i(0);
 	isEnd = false;
 	time_t start = clock(), end;
@@ -514,15 +530,15 @@ Position getNextPosition2(State& s ,ChessType type) {
 		end = clock();
 		if (end - start > 300000 || isEnd) {
 			break;
+			
 		}
 		int deta = defaultPolicy(vl->s, vl->lastType);
 		backUp(vl, deta);
 		++i;
 	}
-	result = bestChild(v0, 0)->lastPosition;
-	freeTree(v0);
+	tree = bestChild(v0, 0);
+	return tree->lastPosition;
 //	std::cout << "Consume time: "<< (clock() - start) / 1000.0 << endl; //TODO cmd line win : time + confidence
-	return result;
 }
 int* getNextPosition3(int* arr,int type){
     ChessType chess_type =static_cast<ChessType>(type);
@@ -577,7 +593,7 @@ Vertex* treePolicy(Vertex * v) {
 		if (canExpand(v)) {
 			return expand(v);
 		}
-		v = bestChild(v, 1);
+		v = bestChild(v, 2);
 	}
 	isEnd = true; // TODO when choice is small, still need to exploit?
 	return v;
@@ -643,8 +659,9 @@ void backUp(Vertex* v, int deta) {
 	while (v != nullptr) {
 		++(v->visitedNum);
 		v->q += deta;
-		deta = -deta;//TODO 1-deta
+		deta = 2 - deta;//TODO 1-deta
 		v = v->parent;
 	}
 }
 }
+
