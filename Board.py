@@ -17,16 +17,17 @@ class DumbAgent(object):
 
 
 class Config(object):
-    BLACK=0
-    WHITE=1
-    def __init__(self, first_color, first,second, use_cli,rollout_time):
+    BLACK = 0
+    WHITE = 1
+
+    def __init__(self, first_color, first, second, use_cli, rollout_time):
         self.player_color = first_color
         # 0 is black first
         # 1 is white second
-        self.first=first
+        self.first = first
         self.second = second
         self.rollout_time = rollout_time
-        self.use_cli=use_cli
+        self.use_cli = use_cli
 
 
 class ComInterface(object):
@@ -236,7 +237,7 @@ class CLI(ComInterface):
 
 class SOI(ComInterface):
     def __init__(self, config):
-        if config.second=="socket":
+        if config.second == "socket":
             HOST = '127.0.0.1'
             PORT = 6000
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -329,6 +330,27 @@ class Board(object):
 
         # Initializing old values
         self.oldarray = deepcopy(self.array)
+    def to_array(self):
+        save_array=deepcopy(self.array)
+        for i,val1 in enumerate(save_array):
+            for j,val2 in enumerate(val1):
+                 if val2 is None:
+                     save_array[i][j]=0
+                 elif val2 == 'w':
+                     save_array[i][j]=-1
+                 else:
+                     save_array[i][j]=1
+        save_array=np.array(save_array,dtype=np.int32)
+        if self.player==Config.BLACK:
+            mul=1
+        else:
+            mul=-1
+        save_player=np.ones_like(save_array)*mul
+        return np.concatenate((save_player,save_array))
+
+    def change_player(self):
+        self.player = 1 - self.player
+        self.cache_action()
 
     def update_score(self):
         white_score = 0
@@ -400,20 +422,22 @@ class Board(object):
                 return valid
 
     def get_action(self, player=None):
+        # self.cache_action()
         if player is None:
             player = self.player
-        # if self._next_action is None:
+        if self._next_action is None:
+            self.cache_action()
+        return self._next_action
+
+    def cache_action(self, player=None):
+        if player is None:
+            player = self.player
         action = []
         for x in range(8):
             for y in range(8):
-
                 if self.valid(self.array, player, x, y):
                     action.append([x, y])
         self._next_action = action
-        return action
-        # else:
-        #     return self._next_action
-        # Updating the board to the screen
 
     def must_pass(self, player):
         must_pass = True
@@ -424,8 +448,8 @@ class Board(object):
         return must_pass
 
     def self_move(self, x, y):
-        if x==-1 and y==-1:
-            self.player=1-self.player
+        if x == -1 and y == -1:
+            self.change_player()
         else:
             self.oldarray = deepcopy(self.array)
             if self.player == 0:
@@ -435,7 +459,8 @@ class Board(object):
             self.array = self.move(self.array, x, y)
 
             # Switch Player
-            self.player = 1 - self.player
+            self.change_player()
+
 
     def move(self, passedArray, x, y):
         # Must copy the passedArray so we don't alter the original
@@ -499,32 +524,29 @@ class Board(object):
 
 
 class TreeNode(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, board=None):
 
         self.child = []
-        self._next_action = []
+        # self._next_action = []
         self.next_action_visited = set()
 
         self.parent = None
         self.last_action = None
-        if kwargs.has_key('tree_node'):
-            self.board = deepcopy(kwargs.get('tree_node').board)
-        else:
-            self.board = deepcopy(kwargs.get('board', None))
+        self.board=deepcopy(board)
         self.n_visited = 0
         self.n_win = 0
 
     def get_next_action(self):
-        if not self._next_action:
-            action = self.board.get_action()
-            self._next_action = action
-        # else:
-        return self._next_action
+        # if not self._next_action:
+        return self.board.get_action()
+        #     self._next_action = action
+        # # else:
+        # return self._next_action
 
-    def move_2_next_state(self, action):
+    def move_2_next_node(self, action):
         next_node = TreeNode(board=self.board)
         next_node.board.array = next_node.board.move(self.board.array, *action)
-        next_node.board.player = 1 - self.board.player
+        next_node.board.change_player()
         next_node.last_action = action
         next_node.parent = self
         return next_node
@@ -550,7 +572,7 @@ class MTCSAgent(object):
             if i in tree_node.next_action_visited:
                 continue
             action = next_actions[i]
-            next_node = tree_node.move_2_next_state(action)
+            next_node = tree_node.move_2_next_node(action)
             tree_node.child.append(next_node)
             tree_node.next_action_visited.add(i)
             return next_node
@@ -570,10 +592,10 @@ class MTCSAgent(object):
             else:
                 # no chess to put
                 # next_node = deepcopy(tree_node)
-                next_node = TreeNode(tree_node=tree_node)
+                next_node = TreeNode(board=tree_node.board)
                 next_node.parent = tree_node
-                next_node.board.player = 1 - tree_node.board.player
-                next_node.last_action=[-1,-1]
+                next_node.board.change_player()
+                next_node.last_action = [-1, -1]
                 return next_node, False
 
         return tree_node, True  # All Node is explored
@@ -584,16 +606,18 @@ class MTCSAgent(object):
         while not self.is_final(tree_node):
             actions = tree_node.get_next_action()
             if not actions:
-                tree_node.board.player = 1 - tree_node.board.player
-                tree_node.last_action=[-1,-1]
+                tree_node.board.change_player()
+                tree_node.last_action = [-1, -1]
             else:
                 action = actions[np.random.randint(0, len(actions))]
-                tree_node = tree_node.move_2_next_state(action)
+                tree_node = tree_node.move_2_next_node(action)
         tree_node.board.update_score()
         if tree_node_in.board.player == 0:  # 0 is black and 1 is white
-            prob_4_curr_player = tree_node.board.black_score * 1. / tree_node.board.ttl_score
+            # prob_4_curr_player = tree_node.board.black_score * 1. / tree_node.board.ttl_score
+            prob_4_curr_player=tree_node.board.black_score>tree_node.board.white_score
         else:
-            prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
+            # prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
+            prob_4_curr_player=tree_node.board.black_score<tree_node.board.white_score
         return prob_4_curr_player
 
     def back_up(self, tree_node, prob):
@@ -603,17 +627,25 @@ class MTCSAgent(object):
             prob = 1 - prob
             tree_node = tree_node.parent
 
-    def best_child(self, tree_node, info=None,use_uct=True):
-        childs=tree_node.child
-        val= [1- child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited) for child in tree_node.child]
-        prob=[1- child.n_win/child.n_visited for child in tree_node.child]
+    def best_child(self, tree_node, info=None, use_uct=True):
+        childs = tree_node.child
+        val = [1. - child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
+               for child in tree_node.child]
+        prob = [1. - child.n_win * 1. / (child.n_visited * 1.) for child in tree_node.child]
+        actions=[child.last_action for child in tree_node.child]
         val_ind = np.argmax(val)
-        prob_ind=np.argmax(prob)
+        prob_ind = np.argmax(prob)
         if info == "show_info":
             if use_uct:
-                print "among ", val, "choose", val[val_ind]
+                print "among ", val\
+                    ,"\n       ", actions\
+                    , "\nchoose", val[val_ind]\
+                    ,"\n     ",actions[val_ind]
             else:
-                print "among ", prob,"choose",  prob[prob_ind]
+                print "among ", prob,\
+                    "\n      ",actions,\
+                    "\nchoose", prob[prob_ind],\
+                    "\n     ",actions[prob_ind]
         return childs[val_ind] if use_uct else childs[prob_ind]
 
         # best_child = tree_node.child[0]  # assert there is at least a child
@@ -627,27 +659,36 @@ class MTCSAgent(object):
         #         best_child = child
 
         # return best_child
-    def go_down(self,action):
-        actions=[child.last_action for child in self.mtcs_root_node.child]
+
+    def go_down(self, action):
+        actions = [child.last_action for child in self.mtcs_root_node.child]
         if not actions:
-            return  False
-        for ind,val in enumerate(actions):
-            if val==action:
+            return False
+        for ind, val in enumerate(actions):
+            if val == action:
                 break
-        self.mtcs_root_node=self.mtcs_root_node.child[ind]
+        print "--"
+        assert val==action
+        assert self.mtcs_root_node.board.player!=self.mtcs_root_node.child[ind].board.player
+        self.mtcs_root_node = self.mtcs_root_node.child[ind]
         return True
         # if action==[-1,-1]:
 
-    def agent_get_action(self, board,first_action=None,second_action=None):
+    def agent_get_action(self, board, first_action=None, second_action=None):
 
-        if first_action is None or second_action is None:
-            self.mtcs_root_node = TreeNode(board=board)
-        else:
-            if self.go_down(first_action) \
-            and self.go_down(second_action):
-                pass
-            else:
-                self.mtcs_root_node = TreeNode(board=board)
+        # if first_action is None or second_action is None:
+        #     self.mtcs_root_node = TreeNode(board=board)
+        #
+        # else:
+        #     if self.go_down(first_action) \
+        #             and self.go_down(second_action):
+        #         # print "----"
+        #         assert self.mtcs_root_node.board.array == board.array
+        #         assert self.mtcs_root_node.board.player==board.player
+        #
+        #     else:
+        #         self.mtcs_root_node = TreeNode(board=board)
+        self.mtcs_root_node = TreeNode(board=board)
 
         tic = time()  # in seconds
         i = 0
@@ -663,6 +704,5 @@ class MTCSAgent(object):
             if (toc - tic > board.config.rollout_time or can_end):
                 break
         print "spend time", time() - tic, " run ", i
-        result = self.best_child(self.mtcs_root_node, "show_info",use_uct=False)
+        result = self.best_child(self.mtcs_root_node, "show_info", use_uct=False)
         return result.last_action
-

@@ -3,8 +3,8 @@ from Board import *
 
 def clickHandle(event):
     # global agent,board
-    if gui_cli.handle_finish(board)== "Exit":
-        result.append([[board.white_score,board.black_score]])
+    if gui_cli.handle_finish(board) == "Exit":
+        result.append([[board.white_score, board.black_score]])
         print result
         os.chdir("output")
         files = glob.glob("*.pkl")
@@ -15,28 +15,28 @@ def clickHandle(event):
         print file
         with open(str(file) + ".pkl", "w") as f:
             cPickle.dump(result, f)
-        if board.white_score-board.black_score>=0:
+        if board.white_score - board.black_score >= 0:
             exit(1)
-        elif board.white_score-board.black_score==0:
+        elif board.white_score - board.black_score == 0:
             exit(2)
         else:
             exit(3)
 
     action = None
-    assert board.player == 0,"now be black"
+    assert board.player == 0, "now be black"
 
     if board.must_pass(0):
         print "black Have No Choose"
         board.player = 1 - board.player
     else:
-        if not Config.player_computer and Config.player_color==0:
+        if not Config.player_computer and Config.player_color == 0:
             # Delete the highlights
             x = int((event.x - 50) / 50)
             y = int((event.y - 50) / 50)
             # Determine the grid index for where the mouse was clicked
             # If the click is inside the bounds and the move is valid, move to that location
             if 0 <= x <= 7 and 0 <= y <= 7 and board.valid(board.array, board.player, x, y):
-                action=[x,y]
+                action = [x, y]
                 board.self_move(x, y)
                 gui_cli.update(board)
             else:
@@ -48,7 +48,7 @@ def clickHandle(event):
             gui_cli.update(board)
     result.append([[0], [action], [board.array]])
 
-    assert board.player == 1,"now white"
+    assert board.player == 1, "now white"
 
     if board.must_pass(1) == True:
         board.player = 1 - board.player
@@ -56,7 +56,7 @@ def clickHandle(event):
         gui_cli.update(board)
         action = None
     else:
-        if not Config.player_computer and Config.player_color==1:
+        if not Config.player_computer and Config.player_color == 1:
             # Delete the highlights
             x = int((event.x - 50) / 50)
             y = int((event.y - 50) / 50)
@@ -71,84 +71,117 @@ def clickHandle(event):
                 print "Your input error, input again: "
                 return
         else:
-            action = dumb_agent.agent_get_action(board) # agent2
+            action = dumb_agent.agent_get_action(board)  # agent2
             board.self_move(*action)
             gui_cli.update(board)
     result.append([[1], [action], [board.array]])
 
     print "black has ", board.get_action(0)
-    if gui_cli.handle_finish(board)== "Exit":
+    if gui_cli.handle_finish(board) == "Exit":
         print result
         # exit(1)
 
+
 def m_main_loop():
-    first_action,second_action=None,None
+    first_action, second_action = None, None
+    result.append([board.to_array()])
     while True:
         if gui_cli.handle_finish(board) == "Exit":
             if board.white_score < board.black_score:
-                exit(1)
+                return 1
             elif board.white_score > board.black_score:
-                exit(2)
+                return -1
             else:
-                exit(3)
+                return 0
 
-            return
+
         assert board.player == 0, "now be black"
         if board.must_pass(0):
             print "black no choose"
-            first_action=[-1,-1]
+            first_action = [-1, -1]
 
         else:
-            if config.first=="gui":
-                first_action=gui_cli.get_input(board)
-            elif config.first=="mtcs":
-                first_action=mtcs_agent.agent_get_action(board,first_action,second_action)
+            if config.first == "gui":
+                first_action = gui_cli.get_input(board)
+            elif config.first == "mtcs":
+                first_action = mtcs_agent.agent_get_action(board, first_action, second_action)
+                assert board.player == 0, "now be black"
+                possible_actions=board.get_action()
+                # print "---"
+                assert first_action in possible_actions,"!!"
         board.self_move(*first_action)
         gui_cli.update(board)
         soi.send_data(first_action)
+        result.append([first_action])
+        result.append([board.to_array()])
 
-        assert board.player==1,"now white"
+        assert board.player == 1, "now white"
 
         if board.must_pass(1):
             print "white no choose"
             soi.get_data_input()
-            second_action=[-1,-1]
+            second_action = [-1, -1]
         else:
-            if config.second=="socket":
+            if config.second == "socket":
                 second_action = soi.get_data_input()
-            elif config.second=="dumb":
-                second_action=dumb_agent.agent_get_action(board)
+            elif config.second == "dumb":
+                second_action = dumb_agent.agent_get_action(board)
+            elif config.second == "mtcs":
+                second_action=second_mtcs_agent.agent_get_action(board)
         board.self_move(*second_action)
         gui_cli.update(board)
+        result.append([first_action])
+        result.append([board.to_array()])
 
 
 if __name__ == "__main__":
     # global board, interface_factory, result, agent
     result = []
-    config = Config(first_color=Config.BLACK,
-                    first="mtcs", # gui
-                    second="dumb", # "socket
-                    use_cli=True,
-                    rollout_time=2)
-
-    mtcs_agent=MTCSAgent()
-    dumb_agent = DumbAgent()
-    root=Tk()
-    root.wm_title('Reversi')
-    screen= Canvas(root, width=500, height=600, background="#555")
-    screen.pack()
-    screen.focus_set()
-    board=Board(config)
-    if not config.use_cli:
-        gui_cli=GUI(screen, root, board)
+    dbg=True
+    if not dbg:
+        config = Config(first_color=Config.BLACK,
+                        first="mtcs",  # mtcs gui
+                        second="socket",  # socket mtcs dumb
+                        use_cli=True,
+                        rollout_time=5)
     else:
-        gui_cli=CLI(board)
-    soi=SOI(config=config)
+        config = Config(first_color=Config.BLACK,
+                        first="mtcs",  # mtcs gui
+                        second="dumb",  # socket mtcs dumb
+                        use_cli=True,
+                        rollout_time=0.1)
+
+    mtcs_agent = MTCSAgent()
+    dumb_agent = DumbAgent()
+    second_mtcs_agent=MTCSAgent()
+    board = Board(config)
+    if not config.use_cli:
+        root = Tk()
+        root.wm_title('Reversi')
+        screen = Canvas(root, width=500, height=600, background="#555")
+        screen.pack()
+        screen.focus_set()
+        gui_cli = GUI(screen, root, board)
+    else:
+        gui_cli = CLI(board)
+    soi = SOI(config=config)
 
     config_data = soi.get_config_input()
     data = soi.get_data_input()
 
-    m_main_loop()
+    res=m_main_loop()
+    result.append([res])
+    print result
+    os.chdir("output")
+    files = glob.glob("*.pkl")
+    if not files:
+        file=0
+    else:
+        files = [int(file.split('.')[0]) for file in files]
+        files = np.sort(files)
+        file = files[-1] + 1
 
-
+    print file
+    with open(str(file) + ".pkl", "w") as f:
+        cPickle.dump(result, f)
 
