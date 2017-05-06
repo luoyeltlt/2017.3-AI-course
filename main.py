@@ -3,7 +3,7 @@ from Board import *
 
 def clickHandle(event):
     # global agent,board
-    if player_interface.handle_finish(board)== "Exit":
+    if gui_cli.handle_finish(board)== "Exit":
         result.append([[board.white_score,board.black_score]])
         print result
         os.chdir("output")
@@ -38,14 +38,14 @@ def clickHandle(event):
             if 0 <= x <= 7 and 0 <= y <= 7 and board.valid(board.array, board.player, x, y):
                 action=[x,y]
                 board.self_move(x, y)
-                player_interface.update(board)
+                gui_cli.update(board)
             else:
                 print "Your input error, input again: "
                 return
         else:
-            action = agent.agent_get_action(board)
+            action = mtcs_agent.agent_get_action(board)
             board.self_move(*action)
-            player_interface.update(board)
+            gui_cli.update(board)
     result.append([[0], [action], [board.array]])
 
     assert board.player == 1,"now white"
@@ -53,7 +53,7 @@ def clickHandle(event):
     if board.must_pass(1) == True:
         board.player = 1 - board.player
         print "white No Choose"
-        player_interface.update(board)
+        gui_cli.update(board)
         action = None
     else:
         if not Config.player_computer and Config.player_color==1:
@@ -66,78 +66,87 @@ def clickHandle(event):
                 if board.valid(board.array, board.player, x, y):
                     action = [x, y]
                     board.self_move(x, y)
-                    player_interface.update(board)
+                    gui_cli.update(board)
             if action is None:
                 print "Your input error, input again: "
                 return
         else:
-            action = agent2.agent_get_action(board) # agent2
+            action = dumb_agent.agent_get_action(board) # agent2
             board.self_move(*action)
-            player_interface.update(board)
+            gui_cli.update(board)
     result.append([[1], [action], [board.array]])
 
     print "black has ", board.get_action(0)
-    if player_interface.handle_finish(board)== "Exit":
+    if gui_cli.handle_finish(board)== "Exit":
         print result
         # exit(1)
 
 def m_main_loop():
-
+    first_action,second_action=None,None
     while True:
-        if player_interface.handle_finish(board) == "Exit":
-            # exit(1)
+        if gui_cli.handle_finish(board) == "Exit":
+            if board.white_score < board.black_score:
+                exit(1)
+            elif board.white_score > board.black_score:
+                exit(2)
+            else:
+                exit(3)
+
             return
         assert board.player == 0, "now be black"
         if board.must_pass(0):
             print "black no choose"
-            board.player=1-board.player
-            so_interface.send_data([-1,-1])
+            first_action=[-1,-1]
+
         else:
-            # action=player_interface.get_input(board)
-            action=agent.agent_get_action(board)
-            board.self_move(*action)
-            player_interface.update(board)
-            so_interface.send_data(action)
+            if config.first=="gui":
+                first_action=gui_cli.get_input(board)
+            elif config.first=="mtcs":
+                first_action=mtcs_agent.agent_get_action(board,first_action,second_action)
+        board.self_move(*first_action)
+        gui_cli.update(board)
+        soi.send_data(first_action)
 
         assert board.player==1,"now white"
 
         if board.must_pass(1):
             print "white no choose"
-            action = so_interface.get_data_input()
-            board.player=1-board.player
-            if config.use_socket:
-                assert action==[-1,-1],"action must be [-1,-1]"
+            soi.get_data_input()
+            second_action=[-1,-1]
         else:
-            if config.use_socket:
-                action = so_interface.get_data_input()
-            else:
-                action=agent2.agent_get_action(board)
-            board.self_move(*action)
-            player_interface.update(board)
+            if config.second=="socket":
+                second_action = soi.get_data_input()
+            elif config.second=="dumb":
+                second_action=dumb_agent.agent_get_action(board)
+        board.self_move(*second_action)
+        gui_cli.update(board)
 
 
 if __name__ == "__main__":
     # global board, interface_factory, result, agent
     result = []
-    config = Config(player_color=0,
-                    player_computer=False ,
-                    rollout_time=0.1,
-                    use_socket=False)
+    config = Config(first_color=Config.BLACK,
+                    first="mtcs", # gui
+                    second="dumb", # "socket
+                    use_cli=True,
+                    rollout_time=2)
 
-    agent=MTCSAgent()
-    agent2 = DumbAgent()
+    mtcs_agent=MTCSAgent()
+    dumb_agent = DumbAgent()
     root=Tk()
     root.wm_title('Reversi')
     screen= Canvas(root, width=500, height=600, background="#555")
     screen.pack()
     screen.focus_set()
     board=Board(config)
-    player_interface=GUI(screen, root, board)
+    if not config.use_cli:
+        gui_cli=GUI(screen, root, board)
+    else:
+        gui_cli=CLI(board)
+    soi=SOI(config=config)
 
-    so_interface=SOI(config=config)
-
-    config_data = so_interface.get_config_input()
-    data = so_interface.get_data_input()
+    config_data = soi.get_config_input()
+    data = soi.get_data_input()
 
     m_main_loop()
 

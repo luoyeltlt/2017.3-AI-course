@@ -17,14 +17,16 @@ class DumbAgent(object):
 
 
 class Config(object):
-    def __init__(self, player_color, player_computer, rollout_time, use_socket):
-        self.player_color = player_color
+    BLACK=0
+    WHITE=1
+    def __init__(self, first_color, first,second, use_cli,rollout_time):
+        self.player_color = first_color
         # 0 is black first
         # 1 is white second
-        self.player_computer = player_computer
-        self.use_cli = self.player_computer
+        self.first=first
+        self.second = second
         self.rollout_time = rollout_time
-        self.use_socket = use_socket
+        self.use_cli=use_cli
 
 
 class ComInterface(object):
@@ -234,7 +236,7 @@ class CLI(ComInterface):
 
 class SOI(ComInterface):
     def __init__(self, config):
-        if config.use_socket:
+        if config.second=="socket":
             HOST = '127.0.0.1'
             PORT = 6000
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -422,15 +424,18 @@ class Board(object):
         return must_pass
 
     def self_move(self, x, y):
-        self.oldarray = deepcopy(self.array)
-        if self.player == 0:
-            self.oldarray[x][y] = "b"
+        if x==-1 and y==-1:
+            self.player=1-self.player
         else:
-            self.oldarray[x][y] = "w"
-        self.array = self.move(self.array, x, y)
+            self.oldarray = deepcopy(self.array)
+            if self.player == 0:
+                self.oldarray[x][y] = "b"
+            else:
+                self.oldarray[x][y] = "w"
+            self.array = self.move(self.array, x, y)
 
-        # Switch Player
-        self.player = 1 - self.player
+            # Switch Player
+            self.player = 1 - self.player
 
     def move(self, passedArray, x, y):
         # Must copy the passedArray so we don't alter the original
@@ -568,6 +573,7 @@ class MTCSAgent(object):
                 next_node = TreeNode(tree_node=tree_node)
                 next_node.parent = tree_node
                 next_node.board.player = 1 - tree_node.board.player
+                next_node.last_action=[-1,-1]
                 return next_node, False
 
         return tree_node, True  # All Node is explored
@@ -579,6 +585,7 @@ class MTCSAgent(object):
             actions = tree_node.get_next_action()
             if not actions:
                 tree_node.board.player = 1 - tree_node.board.player
+                tree_node.last_action=[-1,-1]
             else:
                 action = actions[np.random.randint(0, len(actions))]
                 tree_node = tree_node.move_2_next_state(action)
@@ -620,11 +627,28 @@ class MTCSAgent(object):
         #         best_child = child
 
         # return best_child
+    def go_down(self,action):
+        actions=[child.last_action for child in self.mtcs_root_node.child]
+        if not actions:
+            return  False
+        for ind,val in enumerate(actions):
+            if val==action:
+                break
+        self.mtcs_root_node=self.mtcs_root_node.child[ind]
+        return True
+        # if action==[-1,-1]:
 
-    def agent_get_action(self, board):
-        # assert board.player == 1, "1 computer black temporarily"
-        # mtcs_tree = Tree(board)
-        self.mtcs_root_node = TreeNode(board=board)
+    def agent_get_action(self, board,first_action=None,second_action=None):
+
+        if first_action is None or second_action is None:
+            self.mtcs_root_node = TreeNode(board=board)
+        else:
+            if self.go_down(first_action) \
+            and self.go_down(second_action):
+                pass
+            else:
+                self.mtcs_root_node = TreeNode(board=board)
+
         tic = time()  # in seconds
         i = 0
         while True:
