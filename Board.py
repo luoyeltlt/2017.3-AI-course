@@ -1,13 +1,10 @@
 # from __future__ import division
 from Tkinter import *
-import argparse, math, cPickle
-import os, sys, glob
-from math import *
-from time import *
+import argparse, math, cPickle, os, sys, glob, time
 from random import *
-from copy import deepcopy
-import numpy as np
-import pprint, socket, json, threading, thread
+import copy
+import numpy
+import pprint, socket, json, threading, thread, pp
 
 
 class DumbAgent(object):
@@ -125,7 +122,7 @@ class GUI(ComInterface):
                         self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
                                                 tags="tile animated", fill="#111", outline="#111")
                         if i % 3 == 0:
-                            sleep(0.01)
+                            time.sleep(0.01)
                         self.screen.update()
                         self.screen.delete("animated")
                     # Growing
@@ -135,7 +132,7 @@ class GUI(ComInterface):
                         self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
                                                 tags="tile animated", fill="#fff", outline="#fff")
                         if i % 3 == 0:
-                            sleep(0.01)
+                            time.sleep(0.01)
                         self.screen.update()
                         self.screen.delete("animated")
                     self.screen.create_oval(54 + 50 * x, 54 + 50 * y, 96 + 50 * x, 96 + 50 * y, tags="tile",
@@ -156,7 +153,7 @@ class GUI(ComInterface):
                         self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
                                                 tags="tile animated", fill="#fff", outline="#fff")
                         if i % 3 == 0:
-                            sleep(0.01)
+                            time.sleep(0.01)
                         self.screen.update()
                         self.screen.delete("animated")
                     # Growing
@@ -166,7 +163,7 @@ class GUI(ComInterface):
                         self.screen.create_oval(54 + i + 50 * x, 52 + i + 50 * y, 96 - i + 50 * x, 94 - i + 50 * y,
                                                 tags="tile animated", fill="#111", outline="#111")
                         if i % 3 == 0:
-                            sleep(0.01)
+                            time.sleep(0.01)
                         self.screen.update()
                         self.screen.delete("animated")
 
@@ -329,24 +326,25 @@ class Board(object):
         self.array[4][4] = "w"
 
         # Initializing old values
-        self.oldarray = deepcopy(self.array)
+        self.oldarray = copy.deepcopy(self.array)
+
     def to_array(self):
-        save_array=deepcopy(self.array)
-        for i,val1 in enumerate(save_array):
-            for j,val2 in enumerate(val1):
-                 if val2 is None:
-                     save_array[i][j]=0
-                 elif val2 == 'w':
-                     save_array[i][j]=-1
-                 else:
-                     save_array[i][j]=1
-        save_array=np.array(save_array,dtype=np.int32)
-        if self.player==Config.BLACK:
-            mul=1
+        save_array = copy.deepcopy(self.array)
+        for i, val1 in enumerate(save_array):
+            for j, val2 in enumerate(val1):
+                if val2 is None:
+                    save_array[i][j] = 0
+                elif val2 == 'w':
+                    save_array[i][j] = -1
+                else:
+                    save_array[i][j] = 1
+        save_array = numpy.array(save_array, dtype=numpy.int32)
+        if self.player == Config.BLACK:
+            mul = 1
         else:
-            mul=-1
-        save_player=np.ones_like(save_array)*mul
-        return np.concatenate((save_player,save_array))
+            mul = -1
+        save_player = numpy.ones_like(save_array) * mul
+        return numpy.stack((save_player, save_array))
 
     def change_player(self):
         self.player = 1 - self.player
@@ -451,7 +449,7 @@ class Board(object):
         if x == -1 and y == -1:
             self.change_player()
         else:
-            self.oldarray = deepcopy(self.array)
+            self.oldarray = copy.deepcopy(self.array)
             if self.player == 0:
                 self.oldarray[x][y] = "b"
             else:
@@ -461,10 +459,9 @@ class Board(object):
             # Switch Player
             self.change_player()
 
-
     def move(self, passedArray, x, y):
         # Must copy the passedArray so we don't alter the original
-        array = deepcopy(passedArray)
+        array = copy.deepcopy(passedArray)
         # Set colour and set the moved location to be that colour
         if self.player == 0:
             colour = "b"
@@ -525,14 +522,13 @@ class Board(object):
 
 class TreeNode(object):
     def __init__(self, board=None):
-
         self.child = []
         # self._next_action = []
         self.next_action_visited = set()
 
         self.parent = None
         self.last_action = None
-        self.board=deepcopy(board)
+        self.board = copy.deepcopy(board)
         self.n_visited = 0
         self.n_win = 0
 
@@ -591,7 +587,7 @@ class MTCSAgent(object):
                 tree_node = self.best_child(tree_node)
             else:
                 # no chess to put
-                # next_node = deepcopy(tree_node)
+                # next_node = copy.deepcopy(tree_node)
                 next_node = TreeNode(board=tree_node.board)
                 next_node.parent = tree_node
                 next_node.board.change_player()
@@ -601,7 +597,7 @@ class MTCSAgent(object):
         return tree_node, True  # All Node is explored
 
     def default_policy(self, tree_node_in):
-        tree_node = deepcopy(tree_node_in)  # avoid modify tree_node_in
+        tree_node = copy.deepcopy(tree_node_in)  # avoid modify tree_node_in
 
         while not self.is_final(tree_node):
             actions = tree_node.get_next_action()
@@ -609,22 +605,24 @@ class MTCSAgent(object):
                 tree_node.board.change_player()
                 tree_node.last_action = [-1, -1]
             else:
-                action = actions[np.random.randint(0, len(actions))]
+                action = actions[numpy.random.randint(0, len(actions))]
                 tree_node = tree_node.move_2_next_node(action)
         tree_node.board.update_score()
         if tree_node_in.board.player == 0:  # 0 is black and 1 is white
             # prob_4_curr_player = tree_node.board.black_score * 1. / tree_node.board.ttl_score
-            prob_4_curr_player=tree_node.board.black_score>tree_node.board.white_score
+            prob_4_curr_player = tree_node.board.black_score > tree_node.board.white_score
         else:
             # prob_4_curr_player = tree_node.board.white_score * 1. / tree_node.board.ttl_score
-            prob_4_curr_player=tree_node.board.black_score<tree_node.board.white_score
-        return prob_4_curr_player
+            prob_4_curr_player = tree_node.board.black_score < tree_node.board.white_score
+        return int(prob_4_curr_player)
 
-    def back_up(self, tree_node, prob):
+    def back_up(self, tree_node, win, ttl=None):
+        if ttl == None:
+            ttl = 1
         while tree_node is not None:
-            tree_node.n_visited += 1
-            tree_node.n_win += prob
-            prob = 1 - prob
+            tree_node.n_visited += ttl
+            tree_node.n_win += win
+            win = ttl - win
             tree_node = tree_node.parent
 
     def best_child(self, tree_node, info=None, use_uct=True):
@@ -632,20 +630,20 @@ class MTCSAgent(object):
         val = [1. - child.n_win * 1. / child.n_visited + math.sqrt(2. * math.log(tree_node.n_visited) / child.n_visited)
                for child in tree_node.child]
         prob = [1. - child.n_win * 1. / (child.n_visited * 1.) for child in tree_node.child]
-        actions=[child.last_action for child in tree_node.child]
-        val_ind = np.argmax(val)
-        prob_ind = np.argmax(prob)
+        actions = [child.last_action for child in tree_node.child]
+        val_ind = numpy.argmax(val)
+        prob_ind = numpy.argmax(prob)
         if info == "show_info":
             if use_uct:
-                print "among ", val\
-                    ,"\n       ", actions\
-                    , "\nchoose", val[val_ind]\
-                    ,"\n     ",actions[val_ind]
+                print "among ", val \
+                    , "\n       ", actions \
+                    , "\nchoose", val[val_ind] \
+                    , "\n     ", actions[val_ind]
             else:
-                print "among ", prob,\
-                    "\n      ",actions,\
-                    "\nchoose", prob[prob_ind],\
-                    "\n     ",actions[prob_ind]
+                print "among ", prob, \
+                    "\n      ", actions, \
+                    "\nchoose", prob[prob_ind], \
+                    "\n     ", actions[prob_ind]
         return childs[val_ind] if use_uct else childs[prob_ind]
 
         # best_child = tree_node.child[0]  # assert there is at least a child
@@ -668,8 +666,8 @@ class MTCSAgent(object):
             if val == action:
                 break
         print "--"
-        assert val==action
-        assert self.mtcs_root_node.board.player!=self.mtcs_root_node.child[ind].board.player
+        assert val == action
+        assert self.mtcs_root_node.board.player != self.mtcs_root_node.child[ind].board.player
         self.mtcs_root_node = self.mtcs_root_node.child[ind]
         return True
         # if action==[-1,-1]:
@@ -690,19 +688,41 @@ class MTCSAgent(object):
         #         self.mtcs_root_node = TreeNode(board=board)
         self.mtcs_root_node = TreeNode(board=board)
 
-        tic = time()  # in seconds
+        tic = time.time()  # in seconds
         i = 0
+        job_sever = pp.Server(ppservers=())
         while True:
             i += 1
             mtcs_tree_node, can_end = self.tree_policy(self.mtcs_root_node)
             # Note: do not affect mtcs_tree_node
-            prob = self.default_policy(mtcs_tree_node)
+
+            if 'jobs' in locals():
+                del jobs[:]
+            jobs = []
+            # tic_default=time.time()
+            n_cpus = job_sever.get_ncpus()
+            for i in range(n_cpus + 4):
+                jobs.append(job_sever.submit(self.default_policy,
+                                             (mtcs_tree_node,),
+                                             (self.mtcs_root_node.get_next_action,
+                                              self.mtcs_root_node.board.change_player,
+                                              self.mtcs_root_node.move_2_next_node,
+                                              self.mtcs_root_node.board.update_score),
+                                             ("copy", "numpy")
+                                             )
+                            )
+            win_lose = [job() for job in jobs]
+            win = sum(win_lose)
+            ttl = len(win_lose)
+            # print time.time()-tic_default
+            # prob = self.default_policy(mtcs_tree_node)
             # print prob
-            self.back_up(mtcs_tree_node, prob)
-            toc = time()
+            self.back_up(mtcs_tree_node, win, ttl)
+            toc = time.time()
             # toc=tic
             if (toc - tic > board.config.rollout_time or can_end):
                 break
-        print "spend time", time() - tic, " run ", i
+        print "spend time", time.time() - tic, " run ", i
         result = self.best_child(self.mtcs_root_node, "show_info", use_uct=False)
+        job_sever.destroy()
         return result.last_action

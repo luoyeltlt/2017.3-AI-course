@@ -9,7 +9,7 @@ def clickHandle(event):
         os.chdir("output")
         files = glob.glob("*.pkl")
         files = [int(file.split('.')[0]) for file in files]
-        files = np.sort(files)
+        files = numpy.sort(files)
         print files
         file = files[-1] + 1
         print file
@@ -94,7 +94,6 @@ def m_main_loop():
             else:
                 return 0
 
-
         assert board.player == 0, "now be black"
         if board.must_pass(0):
             print "black no choose"
@@ -106,9 +105,9 @@ def m_main_loop():
             elif config.first == "mtcs":
                 first_action = mtcs_agent.agent_get_action(board, first_action, second_action)
                 assert board.player == 0, "now be black"
-                possible_actions=board.get_action()
+                possible_actions = board.get_action()
                 # print "---"
-                assert first_action in possible_actions,"!!"
+                assert first_action in possible_actions, "!!"
         board.self_move(*first_action)
         gui_cli.update(board)
         soi.send_data(first_action)
@@ -127,7 +126,7 @@ def m_main_loop():
             elif config.second == "dumb":
                 second_action = dumb_agent.agent_get_action(board)
             elif config.second == "mtcs":
-                second_action=second_mtcs_agent.agent_get_action(board)
+                second_action = second_mtcs_agent.agent_get_action(board)
         board.self_move(*second_action)
         gui_cli.update(board)
         result.append([first_action])
@@ -137,7 +136,7 @@ def m_main_loop():
 if __name__ == "__main__":
     # global board, interface_factory, result, agent
     result = []
-    dbg=True
+    dbg = True
     if not dbg:
         config = Config(first_color=Config.BLACK,
                         first="mtcs",  # mtcs gui
@@ -149,11 +148,11 @@ if __name__ == "__main__":
                         first="mtcs",  # mtcs gui
                         second="dumb",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=0.1)
+                        rollout_time=4)
 
     mtcs_agent = MTCSAgent()
     dumb_agent = DumbAgent()
-    second_mtcs_agent=MTCSAgent()
+    second_mtcs_agent = MTCSAgent()
     board = Board(config)
     if not config.use_cli:
         root = Tk()
@@ -169,19 +168,18 @@ if __name__ == "__main__":
     config_data = soi.get_config_input()
     data = soi.get_data_input()
 
-    res=m_main_loop()
+    res = m_main_loop()
     result.append([res])
-    print result
+    # print result
     os.chdir("output")
     files = glob.glob("*.pkl")
     if not files:
-        file=0
+        file = 0
     else:
         files = [int(file.split('.')[0]) for file in files]
-        files = np.sort(files)
+        files = numpy.sort(files)
         file = files[-1] + 1
 
-    print file
-    with open(str(file) + ".pkl", "w") as f:
-        cPickle.dump(result, f)
-
+        # print file
+        # with open(str(file) + ".pkl", "w") as f:
+        #     cPickle.dump(result, f)
