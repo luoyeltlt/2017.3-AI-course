@@ -4,7 +4,7 @@ import argparse, math, cPickle, os, sys, glob, time
 from random import *
 import copy
 import numpy
-import pprint, socket, json, threading, thread, pp
+import pprint, socket, json, threading, thread, pp, subprocess
 
 
 class DumbAgent(object):
@@ -233,48 +233,52 @@ class CLI(ComInterface):
 
 
 class SOI(ComInterface):
-    def __init__(self, config):
-        if config.second == "socket":
-            HOST = '127.0.0.1'
-            PORT = 6000
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s.settimeout(None)
-            while True:
-                # try:
-                errno = self.s.connect_ex((HOST, PORT))
-                if errno == 0:
-                    break
-                else:
-                    print "No connection"
-                    #     break
-                    # except socket.error, exc:
-                    #     print "Caught exception socket.error : %s" % exc
-                    # else:
-                    #     print "Unkown"
+    def __init__(self, config, client=True, local=True):
+        if config.second == "socket" or config.first=="socket":
+            if client:
+                HOST = '10.214.211.10'
+                PORT = 6000
+                self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.s.settimeout(None)
+                while True:
+                    # try:
+                    errno = self.s.connect_ex((HOST, PORT))
+                    if errno == 0:
+                        break
+                    else:
+                        print "No connection"
+                        time.sleep(1)
+            # elif client and not local:
+            #     HOST = '10.214.211.205'
+            #     PORT = 8888
+            #     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #     self.s.settimeout(None)
+            #     i=0
+            #     while i<5 and True:
+            #         # try:
+            #         i+=1
+            #         errno = self.s.connect_ex((HOST, PORT))
+            #         if errno == 0:
+            #             break
+            #         else:
+            #             print "No connection"
+            #             time.sleep(1)
+            # elif not client:
+            #     HOST = '10.214.211.205'
+            #     PORT = 8888
+            #     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #     self.s.settimeout(None)
+            #     self.s.bind((HOST,PORT))
+            #     self.s.listen(5)
         else:
             self.s = None
-            # HOST = '10.214.211.205'
-            # PORT = 8888
-            # self.data = None
-            # self.config_data = None
-            # thread.start_new_thread(self.get_input_callback, ())
-
-    # def get_input_callback(self):
-    #     while True:
-    #         sleep(10)
-    #         data = self.s.recv(1024)
-    #         data = json.loads(data)
-    #         if "White" in data.keys():
-    #             self.config_data = data
-    #         if data != self.data:
-    #             self.data = data
 
     def _get_input(self):
         # return self.data
         if not self.s:
             return
         data = self.s.recv(1024)
-        print data
+        print "recieve:", data
         data = json.loads(data)
         return data
 
@@ -701,7 +705,7 @@ class MTCSAgent(object):
             jobs = []
             # tic_default=time.time()
             n_cpus = job_sever.get_ncpus()
-            for i in range(n_cpus + 4):
+            for i in range(n_cpus ):#+ 4
                 jobs.append(job_sever.submit(self.default_policy,
                                              (mtcs_tree_node,),
                                              (self.mtcs_root_node.get_next_action,

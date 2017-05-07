@@ -1,4 +1,11 @@
 # 2017.3-AI-course - Reversi
+## Dependency 
+- paramiko and pp
+```
+conda install -c anaconda paramiko=2.1.2
+conda install -c geneko pp=1.6.4
+```
+
 ## TODO
 - [x] inherit tree from parent
 - [x] just not enough simulation
