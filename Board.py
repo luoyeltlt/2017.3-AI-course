@@ -234,6 +234,7 @@ class CLI(ComInterface):
 
 class SOI(ComInterface):
     def __init__(self, config, client=True, local=True):
+        self.buf=None
         if config.second == "socket" or config.first=="socket":
             if client:
                 HOST = '10.214.211.10'
@@ -242,12 +243,13 @@ class SOI(ComInterface):
                 self.s.settimeout(None)
                 while True:
                     # try:
+
                     errno = self.s.connect_ex((HOST, PORT))
                     if errno == 0:
                         break
                     else:
                         print "No connection"
-                        time.sleep(1)
+                        time.sleep(0.5)
             # elif client and not local:
             #     HOST = '10.214.211.205'
             #     PORT = 8888
@@ -277,6 +279,7 @@ class SOI(ComInterface):
         # return self.data
         if not self.s:
             return
+
         data = self.s.recv(1024)
         print "recieve:", data
         data = json.loads(data)
@@ -285,13 +288,22 @@ class SOI(ComInterface):
     def get_data_input(self):
         if not self.s:
             return
-        data = self._get_input()
-        return [data['x'], data['y']]
+        if self.buf is not None:
+            data=copy.deepcopy(self.buf)
+            self.buf=None
+            return data
+        else:
+            data = self._get_input()
+            return [data['x'], data['y']]
 
     def get_config_input(self):
         if not self.s:
             return
         data = self._get_input()
+        if "}{" in data:
+            data=data.split("}")
+            self.buf=data[1]+"}"
+            data=data[0]+"}"
         if 'White' in data.keys():
             return data
         else:
@@ -719,7 +731,7 @@ class MTCSAgent(object):
             win = sum(win_lose)
             ttl = len(win_lose)
             # print time.time()-tic_default
-            # prob = self.default_policy(mtcs_tree_node)
+            # win = self.default_policy(mtcs_tree_node)
             # print prob
             self.back_up(mtcs_tree_node, win, ttl)
             toc = time.time()

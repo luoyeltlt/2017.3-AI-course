@@ -97,22 +97,31 @@ def m_main_loop():
         assert board.player == 0, "now be black"
         if board.must_pass(0):
             print "black no choose"
+            if config.first=="socket":
+                first_action=soi.get_data_input()
             first_action = [-1, -1]
 
         else:
             if config.first == "gui":
                 first_action = gui_cli.get_input(board)
+
             elif config.first == "mtcs":
                 first_action = mtcs_agent.agent_get_action(board, first_action, second_action)
                 assert board.player == 0, "now be black"
                 possible_actions = board.get_action()
                 # print "---"
                 assert first_action in possible_actions, "!!"
+            elif config.first=="dumb":
+                first_action=dumb_agent.agent_get_action(board)
+            elif config.first=="socket":
+                first_action = soi.get_data_input()
 
+            if config.first!="socket":
+                soi.send_data(first_action)
 
         board.self_move(*first_action)
         gui_cli.update(board)
-        soi.send_data(first_action)
+
         # result.append([first_action])
         # result.append([board.to_array()])
 
@@ -120,7 +129,8 @@ def m_main_loop():
 
         if board.must_pass(1):
             print "white no choose"
-            soi.get_data_input()
+            if config.second=="socket":
+                soi.get_data_input()
             second_action = [-1, -1]
         else:
             if config.second == "socket":
@@ -129,6 +139,13 @@ def m_main_loop():
                 second_action = dumb_agent.agent_get_action(board)
             elif config.second == "mtcs":
                 second_action = second_mtcs_agent.agent_get_action(board)
+                assert board.player == 1, "now be white"
+                possible_actions = board.get_action()
+                # print "---"
+                assert second_action in possible_actions, "!!"
+            if config.second!="socket":
+                soi.send_data(second_action)
+
         board.self_move(*second_action)
         gui_cli.update(board)
         # result.append([first_action])
@@ -138,19 +155,19 @@ def m_main_loop():
 if __name__ == "__main__":
 
     result = []
-    dbg = True
+    dbg = False
     if not dbg:
         config = Config(first_color=Config.BLACK,
-                        first="mtcs",  # mtcs gui
-                        second="socket",  # socket mtcs dumb
+                        first="socket",  # socket mtcs dumb gui
+                        second="mtcs",  # socket mtcs dumb
                         use_cli=True,
                         rollout_time=5)
     else:
         config = Config(first_color=Config.BLACK,
-                        first="mtcs",  # mtcs gui
-                        second="dumb",  # socket mtcs dumb
+                        first="dumb",  # socket mtcs dumb gui
+                        second="mtcs",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=5)
+                        rollout_time=0.5)
 
     mtcs_agent = MTCSAgent()
     dumb_agent = DumbAgent()
@@ -169,7 +186,7 @@ if __name__ == "__main__":
 
     config_data = soi.get_config_input()
     data = soi.get_data_input()
-
+    soi.buf=data
     res = m_main_loop()
 
     result.append([res])
