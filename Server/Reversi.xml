@@ -20,15 +20,15 @@
     <LocalIP>10.214.211.10</LocalIP>
   </Options>
   <Statistics>
-    <BlackWins>21</BlackWins>
+    <BlackWins>22</BlackWins>
     <WhiteWins>3</WhiteWins>
     <OverallDraws>6</OverallDraws>
-    <BlackTotalScore>166</BlackTotalScore>
-    <WhiteTotalScore>62</WhiteTotalScore>
-    <ComputerWins>19</ComputerWins>
+    <BlackTotalScore>206</BlackTotalScore>
+    <WhiteTotalScore>77</WhiteTotalScore>
+    <ComputerWins>20</ComputerWins>
     <UserWins>0</UserWins>
     <VsComputerDraws>5</VsComputerDraws>
-    <ComputerTotalScore>94</ComputerTotalScore>
-    <UserTotalScore>35</UserTotalScore>
+    <ComputerTotalScore>134</ComputerTotalScore>
+    <UserTotalScore>50</UserTotalScore>
   </Statistics>
 </ProgramSettings>

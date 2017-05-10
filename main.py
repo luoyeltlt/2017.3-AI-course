@@ -153,21 +153,22 @@ def m_main_loop():
 
 
 if __name__ == "__main__":
-
+    # while True:
+    #     print "OK"
     result = []
-    dbg = False
+    dbg = True
     if not dbg:
         config = Config(first_color=Config.BLACK,
                         first="socket",  # socket mtcs dumb gui
                         second="mtcs",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=5)
+                        rollout_time=30)
     else:
         config = Config(first_color=Config.BLACK,
                         first="dumb",  # socket mtcs dumb gui
                         second="mtcs",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=0.5)
+                        rollout_time=5)
 
     mtcs_agent = MTCSAgent()
     dumb_agent = DumbAgent()
