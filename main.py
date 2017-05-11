@@ -1,123 +1,45 @@
 from Board import *
 import paramiko
 
-def clickHandle(event):
-    # global agent,board
-    if gui_cli.handle_finish(board) == "Exit":
-        result.append([[board.white_score, board.black_score]])
-        print result
-        os.chdir("output")
-        files = glob.glob("*.pkl")
-        files = [int(file.split('.')[0]) for file in files]
-        files = numpy.sort(files)
-        print files
-        file = files[-1] + 1
-        print file
-        with open(str(file) + ".pkl", "w") as f:
-            cPickle.dump(result, f)
-        if board.white_score - board.black_score >= 0:
-            exit(1)
-        elif board.white_score - board.black_score == 0:
-            exit(2)
-        else:
-            exit(3)
-
-    action = None
-    assert board.player == 0, "now be black"
-
-    if board.must_pass(0):
-        print "black Have No Choose"
-        board.player = 1 - board.player
-    else:
-        if not Config.player_computer and Config.player_color == 0:
-            # Delete the highlights
-            x = int((event.x - 50) / 50)
-            y = int((event.y - 50) / 50)
-            # Determine the grid index for where the mouse was clicked
-            # If the click is inside the bounds and the move is valid, move to that location
-            if 0 <= x <= 7 and 0 <= y <= 7 and board.valid(board.array, board.player, x, y):
-                action = [x, y]
-                board.self_move(x, y)
-                gui_cli.update(board)
-            else:
-                print "Your input error, input again: "
-                return
-        else:
-            action = mtcs_agent.agent_get_action(board)
-            board.self_move(*action)
-            gui_cli.update(board)
-    result.append([[0], [action], [board.array]])
-
-    assert board.player == 1, "now white"
-
-    if board.must_pass(1) == True:
-        board.player = 1 - board.player
-        print "white No Choose"
-        gui_cli.update(board)
-        action = None
-    else:
-        if not Config.player_computer and Config.player_color == 1:
-            # Delete the highlights
-            x = int((event.x - 50) / 50)
-            y = int((event.y - 50) / 50)
-            # Determine the grid index for where the mouse was clicked
-            # If the click is inside the bounds and the move is valid, move to that location
-            if 0 <= x <= 7 and 0 <= y <= 7:
-                if board.valid(board.array, board.player, x, y):
-                    action = [x, y]
-                    board.self_move(x, y)
-                    gui_cli.update(board)
-            if action is None:
-                print "Your input error, input again: "
-                return
-        else:
-            action = dumb_agent.agent_get_action(board)  # agent2
-            board.self_move(*action)
-            gui_cli.update(board)
-    result.append([[1], [action], [board.array]])
-
-    print "black has ", board.get_action(0)
-    if gui_cli.handle_finish(board) == "Exit":
-        print result
-        # exit(1)
-
-
 def m_main_loop():
     first_action, second_action = None, None
     # result.append([board.to_array()])
     while True:
+        LOG.info("New round\n=============================\n")
         if gui_cli.handle_finish(board) == "Exit":
             if board.white_score < board.black_score:
-                return 1
+                # return 1
+                exit(1)
             elif board.white_score > board.black_score:
-                return -1
+                # return -1
+                exit(-1)
             else:
-                return 0
+                # return 0
+                exit(0)
 
         assert board.player == 0, "now be black"
+
+        if config.first == "gui":
+            if board.must_pass(1):
+                first_action=[-1,-1]
+            else:
+                first_action = gui_cli.get_input(board)
+        elif config.first == "mtcs":
+            first_action = mtcs_agent.agent_get_action(board, second_action=second_action)
+            assert board.player == 0, "now be black"
+            assert not board.get_action() or first_action in board.get_action(), "!!"
+        elif config.first == "dumb":
+            first_action = dumb_agent.agent_get_action(board)
+        elif config.first == "socket":
+            first_action = soi.get_data_input()
+
+        if config.first != "socket":
+            soi.send_data(first_action)
+
         if board.must_pass(0):
             print "black no choose"
-            if config.first=="socket":
-                first_action=soi.get_data_input()
-            first_action = [-1, -1]
+            assert  first_action==[-1,-1]
 
-        else:
-            if config.first == "gui":
-                first_action = gui_cli.get_input(board)
-
-            elif config.first == "mtcs":
-                first_action = mtcs_agent.agent_get_action(board, first_action, second_action)
-                assert board.player == 0, "now be black"
-                possible_actions = board.get_action()
-                # print "---"
-                assert first_action in possible_actions, "!!"
-            elif config.first=="dumb":
-                first_action=dumb_agent.agent_get_action(board)
-            elif config.first=="socket":
-                first_action = soi.get_data_input()
-
-            if config.first!="socket":
-                soi.send_data(first_action)
 
         board.self_move(*first_action)
         gui_cli.update(board)
@@ -127,24 +49,20 @@ def m_main_loop():
 
         assert board.player == 1, "now white"
 
+        if config.second == "socket":
+            second_action = soi.get_data_input()
+        elif config.second == "dumb":
+            second_action = dumb_agent.agent_get_action(board)
+        elif config.second == "mtcs":
+            second_action = second_mtcs_agent.agent_get_action(board, first_action=first_action)
+            assert board.player == 1, "now be white"
+            assert not board.get_action() or second_action in board.get_action(), "!!"
+        if config.second != "socket":
+            soi.send_data(second_action)
+
         if board.must_pass(1):
             print "white no choose"
-            if config.second=="socket":
-                soi.get_data_input()
-            second_action = [-1, -1]
-        else:
-            if config.second == "socket":
-                second_action = soi.get_data_input()
-            elif config.second == "dumb":
-                second_action = dumb_agent.agent_get_action(board)
-            elif config.second == "mtcs":
-                second_action = second_mtcs_agent.agent_get_action(board)
-                assert board.player == 1, "now be white"
-                possible_actions = board.get_action()
-                # print "---"
-                assert second_action in possible_actions, "!!"
-            if config.second!="socket":
-                soi.send_data(second_action)
+            assert second_action==[-1,-1]
 
         board.self_move(*second_action)
         gui_cli.update(board)
@@ -192,6 +110,7 @@ if __name__ == "__main__":
 
     result.append([res])
     print result
+
     # subprocess.call("mkdir -p output".split(" "))
     # os.chdir("output")
     # files = glob.glob("*.pkl")

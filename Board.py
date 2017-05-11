@@ -4,23 +4,23 @@ import argparse, math, cPickle, os, sys, glob, time
 import copy
 import numpy, logging
 import pprint, socket, json, threading, thread, pp, subprocess
-import logging as LOG
-numpy.random.seed(1)
+# import logging as LOG
+# numpy.random.seed(1)
 
-# LOG = logging.getLogger('luzai')
-# LOG.setLevel(logging.DEBUG)
-#
-# ch = logging.StreamHandler(sys.stdout)
-# ch.setLevel(logging.DEBUG)
-# formatter = logging.Formatter('%(asctime)s -  %(levelname)s -------- \n\t%(message)s')
-# ch.setFormatter(formatter)
-# LOG.addHandler(ch)
+LOG = logging.getLogger('luzai')
+LOG.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s -  %(levelname)s -------- \n\t%(message)s')
+ch.setFormatter(formatter)
+LOG.addHandler(ch)
 
 
 class DumbAgent(object):
     def agent_get_action(self, board, player=None):
         actions = board.get_action(board.player)
-        return actions[0] if len(actions) != 0 else None
+        return actions[0] if len(actions) != 0 else [-1,-1]
 
 
 class Config(object):
@@ -239,7 +239,7 @@ class CLI(ComInterface):
 
     def draw_score_board(self, board):
         board.update_score()
-        LOG.info("white has {} black has {}\n".format(
+        LOG.info("white has {} black has {}".format(
             board.white_score, board.black_score
         ))
 
@@ -568,11 +568,17 @@ class TreeNode(object):
         # return self._next_action
 
     def move_2_next_node(self, action):
-        next_node = TreeNode(board=self.board)
-        next_node.board.array = next_node.board.move(self.board.array, *action)
-        next_node.board.change_player()
-        next_node.last_action = action
-        next_node.parent = self
+        if action !=[-1,-1]:
+            next_node = TreeNode(board=self.board)
+            next_node.board.array = next_node.board.move(self.board.array, *action)
+            next_node.board.change_player()
+            next_node.last_action = action
+            next_node.parent = self
+        else:
+            next_node=TreeNode(board=self.board)
+            next_node.board.change_player()
+            next_node.last_action = action
+            next_node.parent = self
         return next_node
 
 
@@ -584,29 +590,18 @@ class MTCSAgent(object):
         next_actions = tree_node.get_next_action()
         if len(next_actions) ==0 :
             action=[-1,-1]
-            next_node=TreeNode(board=self.board)
-            next_node.last_action=action
-            next_node.parent=self
-            next_node.board.change_player()
+            next_node=tree_node.move_2_next_node(action)
+            tree_node.child.append(next_node)
             return next_node
-
         for i in range(len(next_actions)):
             if i not in tree_node.next_action_visited:
                 action = next_actions[i]
                 next_node = tree_node.move_2_next_node(action)
                 tree_node.child.append(next_node)
-                next_node.parent=tree_node
                 tree_node.next_action_visited.add(i)
                 break
         return next_node
         # must can return
-
-    # next_node = TreeNode(board=tree_node.board)
-    # next_node.parent = tree_node
-    # next_node.board.change_player()
-    # next_node.last_action = [-1, -1]
-    # # return next_node, False
-    # tree_node = next_node
 
     def is_final(self, tree_node):
         now_board = tree_node.board
@@ -632,7 +627,6 @@ class MTCSAgent(object):
         tree_node = copy.deepcopy(tree_node_in)  # avoid modify tree_node_in
 
         while not self.is_final(tree_node):
-            # print "GGGG"
             actions = tree_node.get_next_action()
             if not actions:
                 tree_node.board.change_player()
@@ -680,10 +674,11 @@ class MTCSAgent(object):
         actions = [child.last_action for child in self.mtcs_root_node.child]
         if not actions:
             return False
+        assert action in actions
         for ind, val in enumerate(actions):
             if val == action:
                 break
-        print "--"
+        # print "--"
         assert val == action
         assert self.mtcs_root_node.board.player != self.mtcs_root_node.child[ind].board.player
         self.mtcs_root_node = self.mtcs_root_node.child[ind]
@@ -692,61 +687,85 @@ class MTCSAgent(object):
         # if action==[-1,-1]:
 
     def agent_get_action(self, board, first_action=None, second_action=None):
-
-        if first_action is not None:
+        if self.mtcs_root_node is None:
+            self.mtcs_root_node = TreeNode(board=board)
+        elif first_action is not None:
             if self.go_down(first_action):
                 assert self.mtcs_root_node.board.array == board.array
                 assert self.mtcs_root_node.board.player == board.player
+            else:
+                self.mtcs_root_node = TreeNode(board=board)
         elif second_action is not None:
             if self.go_down(second_action):
                 assert self.mtcs_root_node.board.array == board.array
                 assert self.mtcs_root_node.board.player == board.player
+            else:
+                self.mtcs_root_node = TreeNode(board=board)
         else:
             self.mtcs_root_node = TreeNode(board=board)
 
-        self.mtcs_root_node = TreeNode(board=board)
+        if len(self.mtcs_root_node.get_next_action())==0:
+            if self.go_down(action=[-1,-1]):
+                assert self.mtcs_root_node.board.array == board.array
+                assert self.mtcs_root_node.board.player == 1-board.player
+            else:
+                self.mtcs_root_node = TreeNode(board=board)
+            return [-1,-1]
+        # self.mtcs_root_node=TreeNode(board=board)
 
         tic = time.time()  # in seconds
-        i = 0
-        job_sever = pp.Server(ppservers=())
-        while True:
+        n_sim = 0
+        parallel = True
+        if parallel:
+            job_sever = pp.Server(ppservers=())
 
-            i += 1
+        while True:
+            n_sim += 1
             mtcs_tree_node, can_end = self.tree_policy(self.mtcs_root_node)
             # Note: do not affect mtcs_tree_node
+            if parallel:
 
-            # if 'jobs' in locals():
-            #     del jobs[:]
-            # jobs = []
-            # # tic_default=time.time()
-            # n_cpus = job_sever.get_ncpus()
-            # for i in range(int(n_cpus // 1.5)):  # + 4
-            #     jobs.append(job_sever.submit(self.default_policy,
-            #                                  (mtcs_tree_node,),
-            #                                  (self.mtcs_root_node.get_next_action,
-            #                                   self.mtcs_root_node.board.change_player,
-            #                                   self.mtcs_root_node.move_2_next_node,
-            #                                   self.mtcs_root_node.board.update_score),
-            #                                  ("copy", "numpy")
-            #                                  )
-            #                 )
-            # win_lose = [job() for job in jobs]
-            # win = sum(win_lose)
-            # ttl = len(win_lose)
 
-            win = self.default_policy(mtcs_tree_node)
-            ttl=1
+                if 'jobs' in locals():
+                    del jobs[:]
+                jobs = []
+                # tic_default=time.time()
+                n_cpus = job_sever.get_ncpus()
+                n_cpus_used=int(n_cpus) #//1.5
+                n_sim += n_cpus_used
+                for i in range(n_cpus_used):
+                    jobs.append(job_sever.submit(self.default_policy,
+                                                 (mtcs_tree_node,),
+                                                 (self.mtcs_root_node.get_next_action,
+                                                  self.mtcs_root_node.board.change_player,
+                                                  self.mtcs_root_node.move_2_next_node,
+                                                  self.mtcs_root_node.board.update_score),
+                                                 ("copy", "numpy")
+                                                 )
+                                )
+                win_lose = [job() for job in jobs]
+                win = sum(win_lose)
+                ttl = len(win_lose)
+
+                # pass
+            else:
+                win = self.default_policy(mtcs_tree_node)
+                ttl=1
 
             self.back_up(mtcs_tree_node, win, ttl)
             toc = time.time()
             # toc=tic
             if toc - tic > board.config.rollout_time or can_end:
                 break
+
+        if parallel:
+            job_sever.destroy()
+
         LOG.info(
             "spend time {} run {}".format(
-                time.time() - tic, i
+                time.time() - tic, n_sim
             ))
         result = self.best_child(self.mtcs_root_node, info="show_info", c=0)
-        job_sever.destroy()
+
         self.go_down(action=result.last_action)
         return result.last_action
