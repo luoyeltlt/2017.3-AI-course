@@ -28,17 +28,21 @@ class Config(object):
     BLACK = 0
     WHITE = 1
 
-    def __init__(self, first_color, first, second, use_cli, rollout_time,host=None,port=None,dbg=False):
-        self.player_color = first_color
+    def __init__(self, first_color, first, second, use_cli=True, rollout_time=5,host=None,port=None,dbg=False):
+        self.first_color = first_color
         # 0 is black first
         # 1 is white second
+        self.second_color=1-first_color
         self.first = first
+
         self.second = second
         self.rollout_time = rollout_time
         self.use_cli = use_cli
         self.host=host
         self.port=port
         self.dbg=dbg
+        if first=='gui':
+            self.use_cli=False
         if dbg:
             LOG.setLevel(logging.DEBUG)
         else:
@@ -76,6 +80,7 @@ class GUI(ComInterface):
 
     def get_input(self, board):
         self.screen.bind("<Button-1>", self.get_input_callback)
+        num=0
         while True:
             self.root.mainloop()
             x, y = self.input
@@ -83,6 +88,9 @@ class GUI(ComInterface):
                 break
             else:
                 LOG.warning("illegal input!")
+                num+=1
+                if num >10 :
+                    exit(-2)
         return self.input
 
     def get_input_callback(self, event):
@@ -195,7 +203,7 @@ class GUI(ComInterface):
         # Drawing of highlight circles
         for x in range(8):
             for y in range(8):
-                if board.player == board.config.player_color:
+                if board.player == board.config.first_color: # because I make gui be first
                     if board.valid(board.array, board.player, x, y):
                         self.screen.create_oval(68 + 50 * x, 68 + 50 * y, 32 + 50 * (x + 1), 32 + 50 * (y + 1),
                                                 tags="highlight", fill="#008000", outline="#008000")
@@ -285,9 +293,15 @@ class SOI(ComInterface):
                     data = data.split("}")
                     for data_str in data:
                         data_str_com=data_str+"}"
-                        self.buf.append(json.loads(data_str_com))
+                        data=json.loads(data_str_com)
+                        if 'x' in data.keys():
+                            data=[data['x'],data['y']]
+                        self.buf.append(data)
+
                 else:
                     data=json.loads(data)
+                    if 'x' in data.keys():
+                        data = [data['x'],data['y']]
                     self.buf.append(data)
             except Exception as inst:
                 print type(inst)
@@ -311,7 +325,7 @@ class SOI(ComInterface):
             continue
         data=self.buf.popleft()
         LOG.info("Get data {}".format(data))
-        return [data['x'],data['y']]
+        return data
 
     def get_config_input(self):
         if not self.s:
@@ -338,7 +352,7 @@ class Board(object):
     def __init__(self, config):
         # White goes first (0 is black and player,1 is white and computer)
         self.config = config
-        self.player = 0
+        self.player = config.first_color
 
         self.ttl_score = 0
         self.black_score = 0
@@ -369,10 +383,10 @@ class Board(object):
                 elif val2 == 'w':
                     save_array[i][j] = -1
                 else:
-                    save_array[i][j] = 1
+                    save_array[i][j] = 1 # black is 1
         save_array = numpy.array(save_array, dtype=numpy.int32)
         if self.player == Config.BLACK:
-            mul = 1
+            mul = 1 # black is 1
         else:
             mul = -1
         save_player = numpy.ones_like(save_array) * mul
@@ -398,7 +412,7 @@ class Board(object):
     @staticmethod
     def valid(array, player, x, y):
         # Sets player colour
-        if player == 0:
+        if player == Config.BLACK:
             colour = "b"
         else:
             colour = "w"
@@ -495,7 +509,7 @@ class Board(object):
         # Must copy the passedArray so we don't alter the original
         array = copy.deepcopy(passedArray)
         # Set colour and set the moved location to be that colour
-        if self.player == 0:
+        if self.player == Config.BLACK: # if first color is black then first player will be black
             colour = "b"
         else:
             colour = "w"
@@ -708,6 +722,7 @@ class MTCSAgent(object):
         else:
             self.mtcs_root_node = TreeNode(board=board)
 
+        # choose an action  and go down
         if len(self.mtcs_root_node.get_next_action())==0:
             if self.go_down(action=[-1,-1]):
                 assert self.mtcs_root_node.board.array == board.array
@@ -715,12 +730,20 @@ class MTCSAgent(object):
             else:
                 self.mtcs_root_node = TreeNode(board=board)
             return [-1,-1]
+        elif  len(self.mtcs_root_node.get_next_action())==1:
+            action_t=self.mtcs_root_node.get_next_action()[0]
+            if self.go_down(action=action_t):
+                assert self.mtcs_root_node.board.player == 1-board.player
+            else:
+                self.mtcs_root_node = TreeNode(board=board)
+            return action_t
         # self.mtcs_root_node=TreeNode(board=board)
 
         tic = time.time()  # in seconds
         n_sim = 0
         # parallel = not self.mtcs_root_node.board.config.dbg
         parallel=True
+        # parallel=False
         if parallel:
             job_sever = pp.Server(ppservers=())
 
