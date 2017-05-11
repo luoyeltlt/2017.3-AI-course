@@ -4,6 +4,7 @@ import argparse, math, cPickle, os, sys, glob, time
 import copy
 import numpy, logging
 import pprint, socket, json, threading, thread, pp, subprocess
+import Queue
 # import logging as LOG
 # numpy.random.seed(1)
 
@@ -27,7 +28,7 @@ class Config(object):
     BLACK = 0
     WHITE = 1
 
-    def __init__(self, first_color, first, second, use_cli, rollout_time):
+    def __init__(self, first_color, first, second, use_cli, rollout_time,host=None,port=None,dbg=False):
         self.player_color = first_color
         # 0 is black first
         # 1 is white second
@@ -35,7 +36,13 @@ class Config(object):
         self.second = second
         self.rollout_time = rollout_time
         self.use_cli = use_cli
-
+        self.host=host
+        self.port=port
+        self.dbg=dbg
+        if dbg:
+            LOG.setLevel(logging.DEBUG)
+        else:
+            LOG.setLevel(logging.INFO)
 
 class ComInterface(object):
     def handle_finish(self, board):
@@ -246,80 +253,76 @@ class CLI(ComInterface):
 
 class SOI(ComInterface):
     def __init__(self, config, client=True, local=True):
-        self.buf = None
+        self.buf = Queue.deque()
+
         if config.second == "socket" or config.first == "socket":
             if client:
-                HOST = '10.214.211.10'
-                PORT = 6000
+                HOST = config.host
+                PORT = config.port
                 self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.s.settimeout(None)
                 while True:
-                    # try:
-
-                    errno = self.s.connect_ex((HOST, PORT))
-                    if errno == 0:
+                    try:
+                        self.s.connect((HOST, PORT))
+                        self.listen()
                         break
-                    else:
-                        LOG.warning("No connection")
+                    except Exception as inst:
+                        print type(inst)
+                        print inst
                         time.sleep(0.5)
-                        # elif client and not local:
-                        #     HOST = '10.214.211.205'
-                        #     PORT = 8888
-                        #     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        #     self.s.settimeout(None)
-                        #     i=0
-                        #     while i<5 and True:
-                        #         # try:
-                        #         i+=1
-                        #         errno = self.s.connect_ex((HOST, PORT))
-                        #         if errno == 0:
-                        #             break
-                        #         else:
-                        #             print "No connection"
-                        #             time.sleep(1)
-                        # elif not client:
-                        #     HOST = '10.214.211.205'
-                        #     PORT = 8888
-                        #     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        #     self.s.settimeout(None)
-                        #     self.s.bind((HOST,PORT))
-                        #     self.s.listen(5)
         else:
             self.s = None
+    def listen(self):
+        threading.Thread(
+            target=self.listen_to_server,
+        ).start()
+    def listen_to_server(self):
+        while True:
+            try:
+                data=self.s.recv(1024)
+                LOG.info("recieve:{}".format(data))
+                if "}{" in data:
+                    data = data.split("}")
+                    for data_str in data:
+                        data_str_com=data_str+"}"
+                        self.buf.append(json.loads(data_str_com))
+                else:
+                    data=json.loads(data)
+                    self.buf.append(data)
+            except Exception as inst:
+                print type(inst)
+                print inst
+                print "!!Fail"
+                return False
 
-    def _get_input(self):
-        # return self.data
-        if not self.s:
-            return
-
-        data = self.s.recv(1024)
-        LOG.debug("recieve:{}".format(data))
-        data = json.loads(data)
-        return data
+    # # def _get_input(self):
+    #     # return self.data
+    #     if not self.s:
+    #         return
+    #     data = self.s.recv(1024)
+    #     LOG.debug("recieve:{}".format(data))
+    #     data = json.loads(data)
+    #     return data
 
     def get_data_input(self):
         if not self.s:
             return
-        if self.buf is not None:
-            data = copy.deepcopy(self.buf)
-            self.buf = None
-            return data
-        else:
-            data = self._get_input()
-            return [data['x'], data['y']]
+        while len(self.buf)==0:
+            continue
+        data=self.buf.popleft()
+        LOG.info("Get data {}".format(data))
+        return [data['x'],data['y']]
 
     def get_config_input(self):
         if not self.s:
             return
-        data = self._get_input()
-        if "}{" in data:
-            data = data.split("}")
-            self.buf = data[1] + "}"
-            data = data[0] + "}"
-        if 'White' in data.keys():
-            return data
-        else:
-            return None
+        while len(self.buf)==0:
+            continue
+        data=self.buf.popleft()
+        assert 'White' in data.keys(),"has white key"
+        LOG.info("get config {}".format(data))
+        return data
+
 
     def send_data(self, action):
         if not self.s:
@@ -328,6 +331,7 @@ class SOI(ComInterface):
         action = {'x': action[0], 'y': action[1]}
         str = json.dumps(action)
         self.s.send(str)
+        LOG.info("Send data {}".format(str))
 
 
 class Board(object):
@@ -672,9 +676,9 @@ class MTCSAgent(object):
 
     def go_down(self, action):
         actions = [child.last_action for child in self.mtcs_root_node.child]
-        if not actions:
+        if not actions or action not in actions:
             return False
-        assert action in actions
+
         for ind, val in enumerate(actions):
             if val == action:
                 break
@@ -715,7 +719,8 @@ class MTCSAgent(object):
 
         tic = time.time()  # in seconds
         n_sim = 0
-        parallel = True
+        # parallel = not self.mtcs_root_node.board.config.dbg
+        parallel=True
         if parallel:
             job_sever = pp.Server(ppservers=())
 

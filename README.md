@@ -7,12 +7,12 @@ conda install -c geneko pp=1.6.4
 ```
 
 ## TODO
-- [x] inherit tree from parent
+- [x] inherit tree from last MTCS_tree_root
 - [x] just not enough simulation
 - [ ] from remote server
-- [x] multi-threading
+- [ ] robust config, gui, change player's color
 - [ ] Generate data, train a value/policy Network
-- [ ] robust config
+- [x] multi-threading
 - [x] Output win propobility and run-time message in the console
 - [x] Socket commuication
 	- Switch between human/computer/sock (with sever)

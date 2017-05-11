@@ -71,22 +71,24 @@ def m_main_loop():
 
 
 if __name__ == "__main__":
-    # while True:
-    #     print "OK"
     result = []
-    dbg = True
+    dbg = False
     if not dbg:
         config = Config(first_color=Config.BLACK,
                         first="socket",  # socket mtcs dumb gui
+                        host='10.214.211.9',
+                        port=6000,
                         second="mtcs",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=30)
+                        rollout_time=10,
+                        dbg=dbg)
     else:
         config = Config(first_color=Config.BLACK,
                         first="dumb",  # socket mtcs dumb gui
                         second="mtcs",  # socket mtcs dumb
                         use_cli=True,
-                        rollout_time=5)
+                        rollout_time=2,
+                        dbg=dbg)
 
     mtcs_agent = MTCSAgent()
     dumb_agent = DumbAgent()
@@ -102,10 +104,11 @@ if __name__ == "__main__":
     else:
         gui_cli = CLI(board)
     soi = SOI(config=config, client=True, local=True)
-
+    if config.first=="socket" or config.second=='socket':
+        while len(soi.buf)==0:
+            continue
     config_data = soi.get_config_input()
-    data = soi.get_data_input()
-    soi.buf=data
+
     res = m_main_loop()
 
     result.append([res])
